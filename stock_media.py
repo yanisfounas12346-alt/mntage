@@ -209,3 +209,37 @@ def select_commons_scenes(script,limit=8):
         else:missing.append(query)
     if not chosen:raise RuntimeError("Aucun clip vidéo libre trouvé sur Wikimedia Commons. Essaie des scènes plus concrètes ou importe tes MP4.")
     return chosen,missing
+
+
+def download_commons_scenes(script, limit=8):
+    """Try alternative licensed footage when a Commons clip cannot be downloaded."""
+    selected, payloads, missing = [], [], []
+    used=set()
+    total=0
+    for query in scene_queries(script,limit):
+        try:
+            candidates=search_commons_videos(query,limit=8)
+        except Exception as exc:
+            raise RuntimeError("Recherche Wikimedia Commons indisponible : "+str(exc)) from exc
+        picked=False
+        for candidate in candidates:
+            if candidate["id"] in used:
+                continue
+            remaining=300*1024*1024-total
+            if remaining<=0:
+                break
+            try:
+                payload=_download(candidate["url"],min(35*1024*1024,remaining))
+            except (OSError,RuntimeError,ValueError):
+                continue
+            selected.append(candidate)
+            payloads.append(payload)
+            used.add(candidate["id"])
+            total+=len(payload)
+            picked=True
+            break
+        if not picked:
+            missing.append(query)
+    if not payloads:
+        raise RuntimeError("Aucun clip Wikimedia Commons téléchargeable. Essaie un script plus visuel.")
+    return selected,payloads,missing
