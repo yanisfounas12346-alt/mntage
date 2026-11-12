@@ -40,6 +40,24 @@ def duration_seconds(audio: Path) -> float:
         raise RuntimeError("Durée audio invalide : la voix est vide ou corrompue.")
     return duration
 
+def validate_music_audio(path: Path) -> None:
+    """Reject video-only or renamed files masquerading as an MP3."""
+    import json
+    try:
+        result = subprocess.run(
+            ["ffprobe","-v","error","-select_streams","a:0",
+             "-show_entries","stream=codec_type,codec_name",
+             "-of","json",str(path)],
+            capture_output=True,text=True,timeout=30)
+        data = json.loads(result.stdout) if result.returncode == 0 else {}
+    except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
+        raise ValueError("Musique MP3 illisible ou sans piste audio.") from exc
+    streams = data.get("streams", [])
+    if not streams or streams[0].get("codec_type") != "audio":
+        raise ValueError("Musique MP3 illisible ou sans piste audio.")
+    if streams[0].get("codec_name") != "mp3":
+        raise ValueError("La musique doit être un véritable fichier MP3.")
+
 async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5%"):
     boundaries=[]
     with destination.open("wb") as audio:
@@ -191,6 +209,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 music_path = work / "music.mp3"
                 music_path.write_bytes(music)
                 try:
+                    validate_music_audio(music_path)
                     duration_seconds(music_path)
                 except (RuntimeError, OSError, ValueError) as exc:
                     raise ValueError("Musique MP3 invalide ou illisible.") from exc
