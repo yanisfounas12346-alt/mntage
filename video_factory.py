@@ -37,11 +37,11 @@ def _run(args):
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
-               music_volume: float = 0.12, voice_rate: str = "-5%") -> Path:
+               music_volume: float = 0.12, voice_rate: str = "-5%", video_bytes: list[bytes] | None = None) -> Path:
     require_ffmpeg()
-    if not script.strip() or not image_bytes:
+    if not script.strip() or not (image_bytes or video_bytes):
         raise ValueError("Un script et au moins un visuel sont nécessaires.")
-    if len(image_bytes) > 24:
+    if len(image_bytes) > 24 or len(video_bytes or []) > 24:
         raise ValueError("Maximum 24 images pour protéger les ressources du PC.")
     OUT.mkdir(exist_ok=True)
     output = OUT / f"{slugify(title)}.mp4"
@@ -50,9 +50,20 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         audio = work / "voice.mp3"
         asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
         duration = duration_seconds(audio)
-        per_image = duration / len(image_bytes)
+        per_image = duration / (len(video_bytes) if video_bytes else len(image_bytes))
         clips = []
-        for idx, data in enumerate(image_bytes):
+        for idx, data in enumerate(video_bytes if video_bytes else image_bytes):
+            if video_bytes:
+                source = work / f"source_{idx:03d}.mp4"
+                source.write_bytes(data)
+                clip = work / f"clip_{idx:03d}.mp4"
+                # Repeat short source clips if needed, discard their original audio.
+                _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
+                      "-t",str(per_image+0.05),"-an","-vf",
+                      "fps=25,scale=540:960:force_original_aspect_ratio=increase,crop=540:960,setsar=1,format=yuv420p",
+                      "-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
+                clips.append(clip)
+                continue
             with Image.open(BytesIO(data)) as im:
                 im = ImageOps.exif_transpose(im).convert("RGB")
                 im = ImageOps.fit(im, (540, 960), method=Image.Resampling.LANCZOS)
