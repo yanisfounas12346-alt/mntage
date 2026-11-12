@@ -28,10 +28,10 @@ def _circle(p,x,y,r,color,width=3):
 def walk_pose(t):
     """Deterministic two-foot walk cycle at 6.2 rad/s.
 
-    The front leg swings and lifts while the opposite foot remains planted;
-    knees bend during the airborne half-stride. Values use 540x960 stage
-    coordinates so they scale together with the character. The path is smooth
-    in time, including the foot landing (no teleportation between frames).
+    One leg swings and lifts while the opposite sole stays in contact with
+    the floor; knees bend during the airborne half-stride. Values use 540x960
+    stage coordinates. Counteracting body bob at the ankle keeps the contact
+    foot at a stable floor height. This is a stylized walk, not full IK rigging.
     """
     phase=t*6.2
     stride=math.sin(phase)
@@ -45,7 +45,7 @@ def walk_pose(t):
         reach=23*swing
         hip=(side*9,59)
         knee=(side*22+reach*.44+side*lift*.10,111-lift*.40)
-        foot=(side*34+reach,159-lift)
+        foot=(side*34+reach-body_sway,159-lift-body_bob)
         legs.append((hip,knee,foot))
     return body_sway,body_bob,tuple(legs),stride
 
@@ -68,7 +68,12 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         p.ellipse((*pt(l,top),*pt(r,bottom)),fill=color,outline=outline,width=width*s)
     def stroke(coords,color,width):
         p.line([pt(a,b) for a,b in coords],color,width*s)
-    ellipse(-56,166,60,180,(7,18,30))
+    # The ground shadow stays on the floor even while the torso rises.
+    if walking:
+        p.ellipse((x-56*s,y+(166-bob)*s,x+60*s,y+(180-bob)*s),
+                  (7,18,30))
+    else:
+        ellipse(-56,166,60,180,(7,18,30))
     step=3*math.sin(t*1.8)
     for index,sign in enumerate((-1,1)):
         if walking:
