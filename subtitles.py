@@ -32,7 +32,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Caption,Arial,62,&H00FFFFFF,&H000000FF,&H00130A0D,&H88000000,-1,0,0,0,100,100,0,0,1,6,2,2,80,80,310,1
+Style: Caption,Arial,64,&H00FAF8F8,&H000000FF,&H00271810,&H88000000,-1,0,0,0,100,100,0,0,1,7,1,2,95,95,275,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
