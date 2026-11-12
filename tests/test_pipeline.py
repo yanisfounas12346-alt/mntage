@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from stock_media import scene_queries, select_video_scenes, search_commons_videos
+from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output
 
@@ -63,6 +63,18 @@ class VideoPlanningTests(unittest.TestCase):
             results=search_commons_videos("ocean waves",limit=1)
         self.assertEqual(len(results),1)
         self.assertEqual(results[0]["id"],2)
+
+    def test_media_download_guards(self):
+        with self.assertRaisesRegex(RuntimeError,"HTTPS"):
+            _download("http://example.org/video.mp4",1024)
+        with patch("stock_media.urlopen") as request:
+            response=request.return_value.__enter__.return_value
+            response.headers={"Content-Type":"text/html"}
+            with self.assertRaisesRegex(RuntimeError,"page"):
+                _download("https://example.org/video.mp4",1024)
+            response.headers={"Content-Type":"video/mp4","Content-Length":"2048"}
+            with self.assertRaisesRegex(RuntimeError,"volumineux"):
+                _download("https://example.org/video.mp4",1024)
 
     def test_short_video_has_no_micro_scenes(self):
         durations=scene_durations(2.0,[],1)
