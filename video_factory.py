@@ -10,7 +10,7 @@ import edge_tts
 from PIL import Image, ImageOps
 from subtitles import write_srt
 
-OUT = Path("outputs")
+OUT = Path("outputs").resolve()
 OUT.mkdir(exist_ok=True)
 
 def slugify(value: str) -> str:
