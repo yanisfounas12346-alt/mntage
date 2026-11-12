@@ -8,6 +8,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 import urllib.request
+import ssl
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,15 @@ USD_PER_MEGAPIXEL = 0.003
 EUR_BUFFER_PER_USD = 1.25
 WIDTH, HEIGHT = 576, 1024
 _LOCK = threading.Lock()
+
+def _secure_urlopen(request, *, timeout: int):
+    # Prefer the certifi CA bundle when available; keep TLS verification enabled.
+    try:
+        import certifi
+    except ImportError:
+        return urllib.request.urlopen(request, timeout=timeout)
+    context = ssl.create_default_context(cafile=certifi.where())
+    return urllib.request.urlopen(request, timeout=timeout, context=context)
 
 def configured() -> bool:
     return bool(os.environ.get("FAL_KEY", "").strip())
@@ -101,7 +111,7 @@ def generate_cloud_images(prompts: list[str], *, confirmed: bool, cap_eur: float
                     conn.execute("UPDATE spend SET status='submitted' WHERE id=?", (reservation,))
                 submitted = True
             try:
-                with urllib.request.urlopen(req, timeout=180) as response:
+                with _secure_urlopen(req, timeout=180) as response:
                     result = json.load(response)
             except urllib.error.HTTPError as exc:
                 raise _provider_error(exc) from None
@@ -109,7 +119,7 @@ def generate_cloud_images(prompts: list[str], *, confirmed: bool, cap_eur: float
             if not url.startswith("https://") or not (url.split("/")[2].endswith(".fal.media") or url.split("/")[2] == "fal.media"):
                 raise RuntimeError("URL d'image inattendue reçue du fournisseur.")
             try:
-                with urllib.request.urlopen(url, timeout=90) as response:
+                with _secure_urlopen(url, timeout=90) as response:
                     raw = response.read(15_000_001)
             except urllib.error.HTTPError as exc:
                 raise RuntimeError(f"Image générée mais téléchargement refusé (HTTP {exc.code}).") from None
