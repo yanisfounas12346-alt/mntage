@@ -199,6 +199,11 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         raise ValueError("Studio animé : ne fournis pas de visuels externes.")
     if motion_mode and not is_mirror_subject(motion_subject, script):
         raise ValueError("Le studio animé pilote prend en charge uniquement le sujet du miroir.")
+    if motion_mode and script.strip():
+        # Reject an unsupported or incomplete storyboard BEFORE online synthesis.
+        # The exact cut timestamps are recalculated from the real TTS word timings.
+        approximate_duration = max(8.0, len(re.findall(r"\w+", script, re.UNICODE)) / 2.5)
+        plan_mirror_scenes(script, approximate_duration)
     if any(not data for data in image_bytes) or any(not data for data in (video_bytes or [])):
         raise ValueError("Un visuel importé est vide : retire le fichier et réessaie.")
     if not script.strip() or not (image_bytes or video_bytes or motion_mode):
