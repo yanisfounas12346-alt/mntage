@@ -66,6 +66,52 @@ Ces propositions ne sont ni des tendances TikTok vérifiées ni une garantie de 
 **Statut :** moteur expérimental en cours d'amélioration, pas encore production
 professionnelle validée sur tout un épisode et sur toutes les machines Windows.
 
+## Optimisation par lots : test obligatoire toutes les 10 demandes
+
+Les fichiers `tools/checkpoint.py` et `tools/next_request.py` mettent en place le
+**point de contrôle de non-régression**, sans modifier de voix, sans appeler
+d'IA payante et sans supprimer de modifications du dépôt.
+
+Après la réponse à la **10e demande**, lance sur ton PC :
+
+```powershell
+cd C:Users	avermntage
+..venvScriptspython.exe tools/checkpoint.py --iteration 10
+```
+
+La commande effectue un `git pull --ff-only` prudent, vérifie les
+fichiers Python, FFmpeg/ffprobe et exécute
+`python -m unittest discover -s tests -p 'test_*.py' -v`.
+
+- **PASS** : les améliorations peuvent reprendre avec la 11e demande.
+- **FAIL** : stop aux nouvelles fonctionnalités. Le fichier
+  `outputs/checkpoints/cycle_0010_next_prompt.txt` contient le diagnostic
+  à transmettre pour réparer le code ; relancer **le même** checkpoint
+  après correction, jusqu'au succès. Relire les logs pour ne pas partager
+  de clés secrètes.
+- Aux demandes 20, 30, 40, etc., remplacer `--iteration 10` par le
+  nouveau numéro. Pour vérifier sans récupérer GitHub, ajouter
+  `--no-pull` (test potentiellement obsolète).
+
+Pour un **contrôleur de clics ChatGPT** externe, une fois la réponse terminée,
+appeler :
+
+```powershell
+..venvScriptspython.exe -m tools.next_request --completed 10
+```
+
+Cette commande retourne un objet JSON avec :
+`status` = `CONTINUE` ou `REPAIR`,
+`allow_new_optimization` et `prompt`.
+Le contrôleur ne doit **pas incrémenter le compteur des optimisations**
+lorsqu'il soumet une réparation. Le même palier de 10 est retesté.
+
+**Important :** les tests et le choix du prochain message sont programmés.
+Le logiciel ne pilote **pas encore la souris/le navigateur**, ne sait pas
+garantir la fin d'une réponse ChatGPT et **ne répare pas automatiquement
+sans que son prompt d'erreur soit renvoyé à l'assistant**. La qualité
+artistique doit encore être validée humainement sur de vrais MP4.
+
 ## Option : images IA locales sans GPU cloud
 
 Le moteur [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) est **facultatif**. Le mode Éco fonctionne sans lui. Pour activer le mode IA :
