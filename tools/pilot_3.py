@@ -13,7 +13,6 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-from urllib.parse import urlparse
 import webbrowser
 
 from tools import session_handoff as handoff
@@ -101,6 +100,15 @@ class PilotSession:
         if completed >= limit:
             raise ValueError("La limite de 3 optimisations est atteinte.")
         if result == "validated":
+            # Reusing one old commit for several prompts is not evidence
+            # of several improvements.
+            prior = {
+                str(entry.get("commit", "")).lower()
+                for entry in handoff.load().get("history", [])
+                if entry.get("commit")
+            }
+            if commit.strip().lower() in prior:
+                raise ValueError("Ce commit a déjà été comptabilisé. Il faut une nouvelle correction.")
             (verifier or _verify_remote_commit)(commit)
         elif result not in ("partial", "failed"):
             raise ValueError("Statut inconnu.")
