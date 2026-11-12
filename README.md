@@ -1,43 +1,61 @@
-# mntage — AI Video Factory (MVP)
+# mntage — script vers vidéo, sans abonnement GPU
 
-Studio léger pour générer une voix française, assembler des images en vidéo verticale 1080×1920 avec FFmpeg, puis téléverser manuellement ou via OAuth sur YouTube.
+Interface Streamlit : écris un titre et un script, puis génère un MP4 vertical avec voix française. **Mode Éco** : images typographiques créées par Pillow, narration Edge TTS (service en ligne sans clé API) et montage FFmpeg. Aucune carte graphique dédiée requise.
 
-## Installation
+## Installation Windows PowerShell
 
-1. Installer Python 3.11+ et [FFmpeg](https://ffmpeg.org/download.html) et rendre `ffmpeg` accessible dans le PATH.
-2. Cloner le dépôt, puis :
+Installer Python 3.11+ et Git, puis FFmpeg :
 
-```bash
-python -m venv .venv
-# Windows PowerShell :
-.venv\Scripts\Activate.ps1
-# Linux/macOS : source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
+```powershell
+winget install --id Gyan.FFmpeg -e
 ```
 
-## Utilisation
+Ferme puis rouvre PowerShell, et vérifie `ffmpeg -version` et `ffprobe -version`.
 
-1. Saisir un titre et un script, ajouter des images personnelles ou sous licence compatible.
-2. Générer une voix française (Edge TTS, service en ligne) et un MP4 vertical.
-3. Vérifier le résultat puis utiliser l'export manuel ou `python youtube_upload.py outputs/<nom>.mp4 --title "Titre"`.
+```powershell
+cd $HOME
+git clone https://github.com/yanisfounas12346-alt/mntage.git
+cd mntage
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
 
-Pour l'upload API : créer un projet Google Cloud, activer **YouTube Data API v3**, configurer l'écran de consentement OAuth, créer un identifiant OAuth **application de bureau**, puis enregistrer son JSON en `client_secret.json` à la racine. Le script utilise `youtube.upload`, envoie en **privé** par défaut et mémorise le jeton localement. Certains projets API non audités peuvent être limités à la publication privée. Ne jamais committer les secrets.
+Ouvre http://localhost:8501.
 
-## Limites
-
-Ce MVP n'invente pas de scènes vidéo : il anime des images fournies avec un léger zoom, génère la narration et assemble les scènes. La génération d'images/vidéos par IA (ComfyUI/cloud), les sous-titres synchronisés, la planification et les métriques de monétisation restent à intégrer. Edge TTS nécessite Internet ; FFmpeg doit être installé séparément. Vérifier les droits des images, de l'audio et des vidéos avant publication. Aucun revenu n'est garanti.
-
-## Mode automatique sans images (nouveau)
-
-Dans l'interface Streamlit, colle uniquement ton **titre** et ton **script**, puis clique sur **Générer automatiquement mon MP4**. `auto_visuals.py` fabrique des cartes graphiques originales pour chaque scène ; Edge TTS produit la voix et FFmpeg assemble le MP4. Aucun fichier image n'est obligatoire. Tu peux toujours ajouter tes propres images en option.
-
-Pour mettre à jour une installation existante :
+### Mise à jour
 
 ```powershell
 cd $HOME\mntage
 git pull
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-**À savoir :** les visuels automatiques sont des cartes typographiques, pas des images ou animations générées par un modèle vidéo. La qualité commerciale doit être évaluée avant publication. L'upload YouTube OAuth reste une commande distincte.
+## Option : images IA locales sans GPU cloud
+
+Le moteur [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) est **facultatif**. Le mode Éco fonctionne sans lui. Pour activer le mode IA :
+
+1. Télécharge un binaire Windows compatible **CPU** depuis les [releases officielles](https://github.com/leejet/stable-diffusion.cpp/releases), puis extrais-le. Trouve le fichier `sd-cli.exe`.
+2. Télécharge légalement un modèle compatible, par exemple SD 1.5 au format `.safetensors`, depuis une source officielle et vérifie sa licence commerciale.
+3. Configure les chemins vers les fichiers téléchargés :
+
+```powershell
+$env:MNTAGE_SD_CLI = "C:\chemin\vers\sd-cli.exe"
+$env:MNTAGE_SD_MODEL = "C:\chemin\vers\modele.safetensors"
+cd $HOME\mntage
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+L'interface affichera « IA locale ». Ce mode lance **au maximum six scènes**, en 512×512, avec 12 étapes, et peut être **très lent sur CPU**. Aucun téléchargement de modèle n'est lancé automatiquement. Si le moteur échoue, sélectionne le mode Éco.
+
+Le support Vulkan AMD dépend du binaire, du pilote et du modèle ; le mode intégré utilise volontairement le CPU pour la compatibilité. Il ne génère **pas** de clips vidéo IA : il crée des images que FFmpeg anime.
+
+## Projets de référence
+
+- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) : architecture de production, sous-titres, médias, génération en lots (fonctionnalités à intégrer progressivement, non incluses ici).
+- [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) : moteur d'images IA local.
+- [FFmpeg](https://github.com/FFmpeg/FFmpeg) : encodage et montage.
+- [edge-tts](https://github.com/rany2/edge-tts) : synthèse vocale en ligne sans clé API.
+
+**Limites :** pas encore de sous-titres, musique, publication automatique, génération vidéo cinématique, ou tests de bout en bout validés. La publication YouTube privée reste disponible séparément via `youtube_upload.py` avec OAuth. Vérifie les droits des voix, images et modèles avant monétisation.
