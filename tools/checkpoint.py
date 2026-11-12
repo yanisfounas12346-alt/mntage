@@ -73,7 +73,7 @@ def _write_results(iteration: int, steps: list[dict], ok: bool) -> tuple[Path, P
     report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     if ok:
         text = (
-            f"POINT DE CONTROLE {iteration}/100 : TOUS LES TESTS ONT REUSSI.\n"
+            f"POINT DE CONTROLE {iteration}/600 : TOUS LES TESTS ONT REUSSI.\n"
             "Continue l'optimisation de MNTAGE avec une seule amélioration "
             "concrète et vérifiable par demande. Maintiens le budget IA "
             "sous contrôle. Ne change pas les voix et ne lance pas de validation "
@@ -88,7 +88,7 @@ def _write_results(iteration: int, steps: list[dict], ok: bool) -> tuple[Path, P
             for item in steps if not item["ok"]
         )
         text = (
-            f"STOP — POINT DE CONTROLE {iteration}/100 EN ECHEC.\n"
+            f"STOP — POINT DE CONTROLE {iteration}/600 EN ECHEC.\n"
             "Ne commence PAS une nouvelle fonctionnalité. Lis les erreurs, "
             "corrige précisément le code sur le dépôt yanisfounas12346-alt/mntage, "
             "ajoute un test de non-régression adapté, puis fais relancer "
