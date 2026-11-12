@@ -16,6 +16,10 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertTrue(any("forest" in x for x in q))
         self.assertTrue(any("ocean" in x for x in q))
         self.assertTrue(any("space" in x for x in q))
+    def test_french_queries_preserve_scene_order(self):
+        q=scene_queries("La montagne domine la vallée. Une voiture passe sur la route.\\nUn ordinateur s'allume.",8)
+        self.assertEqual(q,["mountain landscape","cars road","computer technology"])
+
     def test_unique_clips(self):
         clips=[{"id":1,"url":"a"},{"id":2,"url":"b"}]
         with patch("stock_media.search_videos",return_value=clips):
