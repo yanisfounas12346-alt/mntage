@@ -25,7 +25,7 @@ def scene_prompts(script: str, style: str = "documentaire cinématique", limit: 
         raise ValueError("Style IA inconnu.")
     if not 1 <= limit <= 12:
         raise ValueError("Nombre de scènes IA invalide.")
-    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\\s+|\\n+",script) if s.strip()]
+    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
     if not sentences:
         raise ValueError("Le script est vide.")
     # Each scene uses the same visual art direction to reduce style changes.
