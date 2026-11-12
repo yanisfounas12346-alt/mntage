@@ -50,16 +50,20 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         audio = work / "voice.mp3"
         asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
         duration = duration_seconds(audio)
-        per_image = duration / (len(video_bytes) if video_bytes else len(image_bytes))
+        count = len(video_bytes) if video_bytes else len(image_bytes)
+        per_image = duration / count
+        scene_count = max(count, round(duration / 4.0)) if video_bytes else count
         clips = []
-        for idx, data in enumerate(video_bytes if video_bytes else image_bytes):
+        for idx in range(scene_count):
+            data = (video_bytes if video_bytes else image_bytes)[idx % count]
+            scene_duration = duration / scene_count
             if video_bytes:
                 source = work / f"source_{idx:03d}.mp4"
                 source.write_bytes(data)
                 clip = work / f"clip_{idx:03d}.mp4"
                 # Repeat short source clips if needed, discard their original audio.
                 _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
-                      "-t",str(per_image+0.05),"-an","-vf",
+                      "-t",str(scene_duration+0.08),"-an","-vf",
                       "fps=25,scale=540:960:force_original_aspect_ratio=increase,crop=540:960,setsar=1,format=yuv420p",
                       "-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
                 clips.append(clip)
@@ -70,7 +74,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 img = work / f"image_{idx:03d}.jpg"
                 im.save(img, quality=85)
             clip = work / f"clip_{idx:03d}.mp4"
-            frames = max(1, round(per_image * 25) + 1)
+            frames = max(1, round(scene_duration * 25) + 1)
             # Alternate camera movement between scenes, staying lightweight on CPU.
             zoom = "min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))"
             x = "iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)"
