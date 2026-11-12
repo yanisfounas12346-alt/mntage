@@ -64,3 +64,45 @@ def select_video_scenes(script, limit=8):
     if not selected:
         raise RuntimeError("Aucun clip Pexels pertinent trouvé. Essaie un script plus visuel.")
     return selected,missing
+
+def search_pixabay_videos(query, limit=6):
+    """Pixabay video API, with 24h on-disk search cache as required by API terms."""
+    import hashlib
+    import time
+    from pathlib import Path
+    key=os.environ.get("PIXABAY_API_KEY","").strip()
+    if not key:raise RuntimeError("PIXABAY_API_KEY manquante.")
+    cache=Path("outputs")/"pixabay_cache"
+    cache.mkdir(parents=True,exist_ok=True)
+    digest=hashlib.sha256((query+str(limit)).encode("utf-8")).hexdigest()
+    file=cache/(digest+".json")
+    if file.exists() and time.time()-file.stat().st_mtime<86400:
+        data=json.loads(file.read_text(encoding="utf-8"))
+    else:
+        params={"key":key,"q":query[:100],"per_page":max(3,min(limit,20)),"safesearch":"true","video_type":"film"}
+        url="https://pixabay.com/api/videos/?"+urlencode(params)
+        with urlopen(Request(url,headers={"User-Agent":"mntage/0.5"}),timeout=20) as response:
+            data=json.load(response)
+        file.write_text(json.dumps(data),encoding="utf-8")
+    result=[]
+    for hit in data.get("hits",[]):
+        versions=hit.get("videos",{})
+        version=next((versions.get(k) for k in ("medium","small","large","tiny") if versions.get(k,{}).get("url") and (versions[k].get("size") or 0)<55*1024*1024),None)
+        if not version:continue
+        result.append({"id":hit.get("id"),"url":version["url"],"page":hit.get("pageURL",""),"credit":hit.get("user",""),"duration":hit.get("duration",0)})
+    return result
+
+def select_pixabay_scenes(script,limit=8):
+    selected=[]
+    used=set()
+    missing=[]
+    for query in scene_queries(script,limit):
+        options=search_pixabay_videos(query,limit=8)
+        clip=next((item for item in options if item.get("id") not in used),None)
+        if clip:
+            selected.append(clip)
+            used.add(clip.get("id"))
+        else:
+            missing.append(query)
+    if not selected:raise RuntimeError("Aucune vidéo Pixabay trouvée pour ce script.")
+    return selected,missing
