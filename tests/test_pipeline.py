@@ -47,6 +47,16 @@ class QueueNarrationTests(unittest.TestCase):
             recovered=job_store.next_job()
             self.assertEqual(recovered["voice_rate"],"+10%")
 
+    def test_next_job_claims_each_task_once(self):
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(job_store,"DB",Path(tmp)/"queue.sqlite3"):
+            first=job_store.enqueue("Premier","Bonjour","Éco","fr-FR-DeniseNeural",True)
+            second=job_store.enqueue("Deuxième","Salut","Éco","fr-FR-DeniseNeural",True)
+            self.assertEqual(job_store.next_job()["id"],first)
+            self.assertEqual(job_store.next_job()["id"],second)
+            self.assertIsNone(job_store.next_job())
+
     def test_existing_database_gets_voice_rate_default(self):
         import sqlite3
         import job_store
