@@ -58,11 +58,11 @@ Le support Vulkan AMD dépend du binaire, du pilote et du modèle ; le mode int�
 - [FFmpeg](https://github.com/FFmpeg/FFmpeg) : encodage et montage.
 - [edge-tts](https://github.com/rany2/edge-tts) : synthèse vocale en ligne sans clé API.
 
-**Limites :** pas encore de sous-titres, musique, publication automatique, génération vidéo cinématique, ou tests de bout en bout validés. La publication YouTube privée reste disponible séparément via `youtube_upload.py` avec OAuth. Vérifie les droits des voix, images et modèles avant monétisation.
+**Limites :** sous-titres et musique personnelle disponibles, mais pas de publication publique automatique, pas de génération vidéo cinématique par IA et pas encore de test de bout en bout validé sur Windows. La publication YouTube privée reste disponible séparément via `youtube_upload.py` avec OAuth. Vérifie les droits des voix, images et modèles avant monétisation.
 
 ## Sous-titres et musique (nouveau)
 
-Dans Streamlit, coche **Ajouter des sous-titres automatiques** pour incruster des sous-titres et exporter aussi un fichier SRT. Le minutage est estimé, et non aligné mot par mot. FFmpeg doit être compilé avec le filtre `subtitles` (libass) ; vérifie avec `ffmpeg -filters | findstr subtitles`. Tu peux importer une musique MP3 dont tu possèdes les droits ; elle est mixée à volume réduit avec la narration. Aucun catalogue musical ni téléchargement automatique n'est inclus.
+Dans Streamlit, coche **Ajouter des sous-titres automatiques** pour incruster des sous-titres et exporter aussi un fichier SRT. Le minutage utilise les événements WordBoundary d'Edge TTS lorsqu'ils sont disponibles ; sinon il est estimé. FFmpeg doit disposer du filtre `ass` (libass) ; vérifie avec `ffmpeg -filters | findstr ass`. Tu peux importer une musique MP3 dont tu possèdes les droits ; elle est mixée à volume réduit avec la narration. Aucun catalogue musical ni téléchargement automatique n'est inclus.
 
 ## Publication
 
