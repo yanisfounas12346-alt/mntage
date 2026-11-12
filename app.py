@@ -49,8 +49,8 @@ with tab_create:
             production_brief(title,seo_keyword,visual_style),
             file_name="brief-tiktok-pro.txt",mime="text/plain")
     with st.expander("⚙️ Options avancées",expanded=False):
-        voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
-        voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
+        voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"],help="Deux voix françaises gratuites Edge TTS : écoute les deux avant publication.")
+        voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-10%",help="Pour un documentaire mystérieux, essaie -10 % ou -5 %. Le débit ne remplace pas une voix expressive.")
         modes=["Auto — Wikimedia Commons (sans clé API)", "Mes clips MP4 — montage sans API"]
         if os.environ.get("PIXABAY_API_KEY"):
             modes.append("Vidéos Pixabay — vrais clips (gratuit)")
