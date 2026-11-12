@@ -97,6 +97,13 @@ class VideoPlanningTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,"volumineux"):
                 _download("https://example.org/video.mp4",1024)
 
+    def test_scene_cut_rhythm_and_total_duration(self):
+        words=[{"offset":int(t*10000000),"duration":1000000}
+               for t in (1.8,3.9,6.1,8.2,10.1,12.2,14.1,16.1)]
+        durations=scene_durations(18.0,words,3)
+        self.assertAlmostEqual(sum(durations),18.0)
+        self.assertTrue(all(1.0<=d<=6.0 for d in durations),durations)
+
     def test_short_video_has_no_micro_scenes(self):
         durations=scene_durations(2.0,[],1)
         self.assertEqual(len(durations),1)
