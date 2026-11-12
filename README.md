@@ -27,3 +27,17 @@ Pour l'upload API : créer un projet Google Cloud, activer **YouTube Data API v3
 ## Limites
 
 Ce MVP n'invente pas de scènes vidéo : il anime des images fournies avec un léger zoom, génère la narration et assemble les scènes. La génération d'images/vidéos par IA (ComfyUI/cloud), les sous-titres synchronisés, la planification et les métriques de monétisation restent à intégrer. Edge TTS nécessite Internet ; FFmpeg doit être installé séparément. Vérifier les droits des images, de l'audio et des vidéos avant publication. Aucun revenu n'est garanti.
+
+## Mode automatique sans images (nouveau)
+
+Dans l'interface Streamlit, colle uniquement ton **titre** et ton **script**, puis clique sur **Générer automatiquement mon MP4**. `auto_visuals.py` fabrique des cartes graphiques originales pour chaque scène ; Edge TTS produit la voix et FFmpeg assemble le MP4. Aucun fichier image n'est obligatoire. Tu peux toujours ajouter tes propres images en option.
+
+Pour mettre à jour une installation existante :
+
+```powershell
+cd $HOME\mntage
+git pull
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+**À savoir :** les visuels automatiques sont des cartes typographiques, pas des images ou animations générées par un modèle vidéo. La qualité commerciale doit être évaluée avant publication. L'upload YouTube OAuth reste une commande distincte.
