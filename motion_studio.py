@@ -87,6 +87,8 @@ def plan_mirror_scenes(script: str, duration: float, boundaries: list[dict] | No
         end = matched[i + 1][1] if i + 1 < len(matched) else duration
         if end > start:
             result.append(MotionScene(kind, start, end))
+    if len(result) < 4:
+        raise ValueError("Storyboard miroir incomplet : colle le script du miroir pour animer correctement l'histoire.")
     return result
 
 
@@ -189,7 +191,11 @@ def _mirror(p, cx=388, top=245, width=174, height=430, distort=0.0, t=0.0):
     facex, facey = cx, top+137
     jitter = distort * math.sin(t*4.6)
     shift = jitter * 20
-    p.ellipse((facex-59+shift,facey-71,facex+59-shift,facey+69), WHITE,
+    # The reflection itself morphs; the original character and camera stay stable.
+    face_width = 59 + distort * 25 * math.sin(t * 2.1)
+    face_height = 70 + distort * 18 * math.cos(t * 2.6)
+    p.ellipse((facex-face_width+shift,facey-face_height,
+               facex+face_width+shift,facey+face_height), WHITE,
               outline=DARK, width=5)
     p.ellipse((facex-27-10*distort,facey-10,facex-16-10*distort,facey+5), DARK)
     p.ellipse((facex+18+13*distort,facey-8-16*distort,facex+29+13*distort,facey+8+10*distort), DARK)
@@ -235,7 +241,6 @@ def _draw_frame(size, kind, progress, seconds, base):
             fade=_ease(progress*1.5)
             _mirror(p,270,226,312,480,distort=fade*(.70+.27*math.sin(t*2)),t=t)
             _scientist(p,97,665,.47,wave=t*2, startled=.8, side=1)
-            p.text((270,744),"LE REFLET CHANGE",PINK,18)
         elif kind=="experiment":
             _mirror(p,185,268,177,395,distort=.2*progress,t=t)
             _scientist(p,310,630,.67,wave=t*2,startled=.1)
@@ -243,16 +248,14 @@ def _draw_frame(size, kind, progress, seconds, base):
             angle=t*1.7
             p.line([(417,283),(417+43*math.sin(angle),283-43*math.cos(angle))],YELLOW,5)
             p.ellipse((409,275,425,291),YELLOW)
-            p.text((415,374),"OBSERVER",WHITE,15)
         elif kind=="reveal":
             _mirror(p,360,256,202,394,distort=max(0,1-_ease(progress*2)),t=t)
             _scientist(p,151,620,.74,wave=t*2,startled=0,side=1)
             p.ellipse((235,238,275,278),YELLOW)
             p.ellipse((240,243,270,273),PANEL)
-            p.text((270,753),"PAS DE MAGIE",CYAN,19)
         else:
             _mirror(p,384,252,180,415,distort=0.0,t=t)
-            x=112+38*_ease(min(1,progress*1.5)) if kind=="approach" else 150
+            x=-85+235*_ease(min(1,progress*1.5)) if kind=="approach" else 150
             _scientist(p,x,618,.74,wave=t*2,startled=.06 if kind=="stare" else 0,
                        blink=(kind=="stare" and .82<(t%3)<.95))
             if kind=="stare":
@@ -268,7 +271,6 @@ def _draw_frame(size, kind, progress, seconds, base):
                 shift=(t*.6+j/3)%1
                 x=198+shift*100
                 p.ellipse((x-7,393-7+j*17,x+7,393+7+j*17),YELLOW)
-            p.text((277,707),"CE QUE L'ON PERÇOIT",CYAN,15)
         else:
             _brain(p,270,402,t,1.05 if kind=="brain" else .91)
             _scientist(p,105,678,.43,wave=t*2,startled=0)
@@ -278,12 +280,11 @@ def _draw_frame(size, kind, progress, seconds, base):
                     x=270+202*math.cos(ang);y=405+202*math.sin(ang)
                     p.line([(270,405),(x,y)],(34,126,130),2)
                     p.ellipse((x-9,y-9,x+9,y+9),YELLOW if i%2 else CYAN)
-            p.text((270,726),"LE CERVEAU INTERPRÈTE",WHITE,17)
     else:  # ending slate, no fake scientific scene
         p.ellipse((102,239,438,575),PANEL,outline=CYAN,width=7)
         _brain(p,270,397,t,.83)
-        p.text((270,664),"SCIENCE WTF",WHITE,36)
-        p.text((270,719),"LA SCIENCE EST ÉTRANGE.",YELLOW,17)
+        p.text((270,621),"SCIENCE WTF",WHITE,36)
+        p.text((270,676),"LA SCIENCE EST ÉTRANGE.",YELLOW,17)
     return frame
 
 
