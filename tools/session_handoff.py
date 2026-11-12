@@ -38,7 +38,7 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 def initial():
-    return {"version":1,"completed":0,"goal":100,"pending":None,
+    return {"version":1,"completed":0,"goal":600,"pending":None,
             "last_summary":"Pilote miroir, qualité pro non démontrée.",
             "last_commit":"","next_focus":"Animation et généralisation des sujets.",
             "failure":"","history":[],"updated":now()}
@@ -50,6 +50,11 @@ def load(path=None):
     s=json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(s,dict) or s.get("version")!=1 or not isinstance(s.get("completed"),int) or s["completed"]<0:
         raise ValueError("État corrompu. Ne pas réinitialiser le compteur.")
+    # The original pilot targeted 100 requests. The user explicitly extended
+    # the same cycle to 600; migrate the target, never reset its progress.
+    if s.get("goal") == 100:
+        s["goal"] = 600
+        save(s, path)
     return s
 
 def save(s,path=None):
