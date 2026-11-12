@@ -261,8 +261,47 @@ def select_commons_scenes(script,limit=8):
     return chosen,missing
 
 
+def _has_blue_frame_border(path):
+    """Reject obvious solid-blue frames/borders embedded in stock footage.
+
+    Sample three moments; do not mistake naturally blue water for a border.
+    A border must occupy all four edges while the center differs.
+    """
+    import subprocess
+    from io import BytesIO
+    from PIL import Image
+    for timestamp in ("0.5", "1.5", "3.0"):
+        try:
+            result=subprocess.run(
+                ["ffmpeg","-v","error","-ss",timestamp,"-i",str(path),
+                 "-frames:v","1","-vf","scale=160:160:force_original_aspect_ratio=decrease,"
+                 "pad=160:160:(ow-iw)/2:(oh-ih)/2:black",
+                 "-f","image2pipe","-vcodec","mjpeg","-"],
+                capture_output=True,timeout=15)
+            if result.returncode or not result.stdout:
+                continue
+            with Image.open(BytesIO(result.stdout)) as frame:
+                im=frame.convert("RGB")
+                # Check narrow bands inside the image, not the black letterbox.
+                bands=[(x,y) for x in range(24,136) for y in range(24,136)
+                       if x in range(24,35) or x in range(125,136)
+                       or y in range(24,35) or y in range(125,136)]
+                colors=[im.getpixel(p) for p in bands]
+                blue=[r<105 and 55<b and b>r*1.65 and b>g*1.18
+                      for r,g,b in colors]
+                center=[im.getpixel((x,y)) for x in range(55,105,5)
+                        for y in range(55,105,5)]
+                center_blue=sum(r<105 and b>r*1.65 and b>g*1.18
+                                for r,g,b in center)/len(center)
+                if sum(blue)/len(blue)>.88 and center_blue<.55:
+                    return True
+        except (OSError,ValueError,subprocess.TimeoutExpired):
+            continue
+    return False
+
+
 def _valid_video_payload(payload):
-    """Reject corrupt/low-resolution footage before accepting a Commons candidate."""
+    """Reject corrupt, very low-quality or visibly framed Commons footage."""
     import tempfile
     from pathlib import Path
     from video_factory import inspect_source_video
@@ -270,7 +309,12 @@ def _valid_video_payload(payload):
         path=Path(directory)/"candidate.video"
         path.write_bytes(payload)
         try:
-            inspect_source_video(path)
+            info=inspect_source_video(path)
+            # Landscape clips need enough vertical pixels for a 9:16 crop.
+            if min(info["width"],info["height"])<720:
+                return False
+            if _has_blue_frame_border(path):
+                return False
         except (OSError,RuntimeError,ValueError):
             return False
     return True
