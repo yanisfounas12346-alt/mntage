@@ -174,11 +174,12 @@ def _stage(p,kind,shot,progress,t):
         p.ellipse((cx-r,238-r,cx+r,238+r),outline=(36,87,96),width=2)
 
 def draw_professional_frame(base: Image.Image,kind: str,shot: int,
-                            progress: float,seconds: float,mouth: float)->Image.Image:
+                            progress: float,seconds: float,mouth: float,beat_progress=None)->Image.Image:
     """Storyboard-aware animated frame with a stable camera and independent layers."""
     frame=base.copy()
     p=_Painter(frame)
     t=progress*seconds
+    arc=progress if beat_progress is None else beat_progress
     _stage(p,kind,shot,progress,t)
     mode=shot%4
     if kind in ("brain","neural","vision"):
@@ -216,7 +217,7 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
             p.line([(110,334),(110+30*math.cos(theta),334+30*math.sin(theta))],YELLOW,5)
     elif kind=="distort":
         if mode==0:
-            _mirror(p,275,450,300,435,t,distortion=.2+.75*_ease(progress))
+            _mirror(p,275,450,300,435,t,distortion=.2+.75*_ease(arc))
             _actor(p,105,702,.50,t,mouth=mouth,feeling="surprised",action="recoil",progress=progress)
         elif mode==1:
             _actor(p,266,653,1.27,t,mouth=mouth,feeling="surprised",action="recoil",progress=progress)
@@ -224,11 +225,11 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
             p.line([(420,302),(420,339)],YELLOW,7)
             p.ellipse((414,347,426,359),YELLOW)
         elif mode==2:
-            _mirror(p,270,448,358,450,t,distortion=.36+.6*_ease_out(progress))
+            _mirror(p,270,448,358,450,t,distortion=.36+.6*_ease_out(arc))
             _actor(p,80,712,.41,t,mouth=mouth,feeling="surprised",action="recoil",progress=progress)
         else:
             _mirror(p,145,458,202,356,t,distortion=0.)
-            _mirror(p,394,458,202,356,t,distortion=.27+.70*_ease(progress))
+            _mirror(p,394,458,202,356,t,distortion=.27+.70*_ease(arc))
             _actor(p,264,710,.44,t,mouth=mouth,feeling="surprised",action="point",progress=progress)
             p.line([(270,300),(270,639)],MUTED,2)
     elif kind=="outro":
@@ -240,7 +241,7 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
             _actor(p,262,670,1.25,t,mouth=mouth,action="talk",progress=progress)
             _circle(p,415,334,37,CYAN,4)
         else:
-            _mirror(p,363,465,210,417,t,distortion=(1-_ease_out(progress))*.8,reveal=_ease_out(progress))
+            _mirror(p,363,465,210,417,t,distortion=(1-_ease_out(arc))*.8,reveal=_ease_out(arc))
             _actor(p,135,685,.79,t,mouth=mouth,action="point",progress=progress)
     else:
         if mode==1:
