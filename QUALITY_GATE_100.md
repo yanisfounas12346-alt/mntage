@@ -3,8 +3,8 @@
 Démarrage du suivi : **12 novembre 2026**.
 
 **Cycle de développement visé : 600 optimisations.** Le présent document est
-la **première réévaluation critique à 100**. Optimisation #1/600 livrée sur
-GitHub, **tests Windows et contrôle visuel encore à effectuer** : statut partiel.
+la **première réévaluation critique à 100**. Optimisations #1 et #2/600 livrées sur GitHub,
+**tests Windows et contrôle visuel encore à effectuer** : statuts partiels.
 Le compteur persistant du PC reste indépendant et ne s'incrémente qu'après
 confirmation via `tools/session_handoff.py`. Les anciens échanges ne sont pas
 reconstitués artificiellement.
@@ -27,6 +27,7 @@ reconstitués artificiellement.
 | N° | Date | Demande et défaut | Modification / commit | Preuve ou test | Statut |
 |---:|---|---|---|---|---|
 | 1 | 2026-11-12 | Libellés du dessin animé lisibles sur Windows ; objectif de reprise étendu sans perte à 600 | `b635c18`, `e33018a` | `tests/test_typography.py` et migration du suivi ajoutés ; **à exécuter sur Windows** | Partielle |
+| 2 | 2026-11-12 | Marche moins rigide : pas alternés, levée de pied, flexion de genou, balancement opposé des bras, rebond du corps avec appui au sol | `f817296`, `b2406c4`, `e648ef4` | `tests/test_walk_gait.py` (5 tests) ajoutés ; **à exécuter et inspecter en MP4 sur Windows** | Partielle |
 
 ## État de référence au démarrage (à vérifier, pas un score de performance)
 
