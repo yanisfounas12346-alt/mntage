@@ -79,17 +79,48 @@ def save(s,path=None):
         finally:
             prompt_tmp.unlink(missing_ok=True)
 
-def gate_status(n):
+_REQUIRED_CHECKPOINT_STEPS={
+    "syntaxe Python", "FFmpeg exécutable", "FFprobe exécutable",
+    "filtre ASS (sous-titres)", "tests unitaires et de non-régression",
+}
+
+
+def gate_status(n, s):
+    """Allow progression only after a recent, complete local test report.
+
+    A copied CI report, a bare PASS JSON, or a report from an earlier commit
+    cannot unlock the next iteration. The controller never increments here.
+    """
     path=gate.OUT/f"cycle_{n:04d}.json"
     if not path.exists():
         return "MISSING"
     try:
         report=json.loads(path.read_text(encoding="utf-8"))
-        if report.get("iteration")==n and report.get("status")=="PASS":
-            return "PASS"
-    except (ValueError,OSError):
-        pass
-    return "FAIL"
+        if not isinstance(report,dict) or report.get("iteration")!=n:
+            return "FAIL"
+        if report.get("status")!="PASS" or report.get("repository")!=str(gate.ROOT):
+            return "FAIL"
+        revision=gate._git_revision()
+        if not revision or report.get("git_revision")!=revision:
+            return "FAIL"
+        checkpoint_time=datetime.fromisoformat(report["timestamp_utc"])
+        recorded=next(e for e in reversed(s["history"]) if e["number"]==n)
+        completion_time=datetime.fromisoformat(recorded["when"])
+        if (checkpoint_time.tzinfo is None or completion_time.tzinfo is None
+                or checkpoint_time<completion_time):
+            return "FAIL"
+        steps=report["steps"]
+        if not isinstance(steps,list) or not steps:
+            return "FAIL"
+        if not all(isinstance(step,dict) and step.get("ok") is True
+                   for step in steps):
+            return "FAIL"
+        names={step.get("step") for step in steps}
+        if not _REQUIRED_CHECKPOINT_STEPS.issubset(names):
+            return "FAIL"
+        return "PASS"
+    except (OSError,ValueError,TypeError,KeyError,StopIteration):
+        return "FAIL"
 
 def begin(s):
     """Create a pending request; never send an unconfirmed duplicate."""
@@ -104,11 +135,14 @@ def begin(s):
         return {"status":"REPAIR","allow_send":False,"iteration":n,
                 "prompt":"STOP : "+s["failure"]+" ; réparer puis relancer le contrôle."}
     if n>0 and n%10==0:
-        status=gate_status(n)
+        status=gate_status(n,s)
         if status!="PASS":
-            prompt=gate.OUT/f"cycle_{n:04d}_next_prompt.txt"
-            detail=prompt.read_text(encoding="utf-8") if prompt.exists() else (
-                f"Checkpoint {n} absent/échoué. Exécuter le contrôle et réparer.")
+            detail=(
+                f"STOP : preuve du checkpoint {n} absente ou invalide sur "
+                "ce PC et cette révision Git. Vérifier l'historique local, "
+                f"puis relancer python -m tools.checkpoint --iteration {n} "
+                "--no-pull. Ne pas passer à la demande suivante."
+            )
             return {"status":"CHECKPOINT_REQUIRED" if status=="MISSING" else "REPAIR",
                     "allow_send":False,"iteration":n,"prompt":detail}
     ident=uuid.uuid4().hex
@@ -175,7 +209,7 @@ def make_handoff(s):
     elif s.get("failure"):
         phase="BLOCAGE : "+s["failure"]+". Corriger avant toute nouvelle optimisation."
     elif n>0 and n%10==0:
-        phase=f"Checkpoint {n} : {gate_status(n)}. Doit être PASS avant la suite."
+        phase=f"Checkpoint {n} : {gate_status(n,s)}. Doit être PASS avant la suite."
     else:
         phase=f"Prêt pour la requête {n+1}."
     recent="\n".join(
