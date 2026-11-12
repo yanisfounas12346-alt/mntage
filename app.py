@@ -185,6 +185,12 @@ with tab_create:
                     if not science_mode and mode.startswith("Auto") and not user_clips and not images:
                         sources=st.session_state.get("commons_sources",[])
                         path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}" for x in sources),encoding="utf-8")
+                try:
+                    path.with_suffix(".seo.txt").write_text(
+                        seo_pack(title, script, seo_keyword, science=science_mode),
+                        encoding="utf-8")
+                except OSError as seo_exc:
+                    st.warning(f"Vidéo créée, mais le pack SEO n'a pas pu être sauvegardé : {seo_exc}")
                 st.session_state["last_video"]=str(path)
                 st.success("Vidéo prête. Vérifie les images et les droits avant publication.")
             except Exception as exc:st.error(f"Erreur : {exc}")
@@ -202,6 +208,10 @@ with tab_create:
             st.video(str(p))
             st.download_button("⬇️ Télécharger MP4",p.read_bytes(),file_name=p.name,mime="video/mp4",use_container_width=True)
             if p.with_suffix(".srt").exists():st.download_button("Sous-titres SRT",p.with_suffix(".srt").read_bytes(),file_name=p.with_suffix(".srt").name)
+            if p.with_suffix(".seo.txt").exists():
+                st.download_button("📈 Télécharger le pack SEO de cette vidéo",
+                                   p.with_suffix(".seo.txt").read_bytes(),
+                                   file_name=p.with_suffix(".seo.txt").name,mime="text/plain")
             if p.with_suffix(".sources.txt").exists():st.download_button("Crédits des vidéos",p.with_suffix(".sources.txt").read_bytes(),file_name=p.with_suffix(".sources.txt").name)
 with tab_queue:
     st.caption("File locale persistante. Les tâches s'exécutent une par une, lorsque tu cliques. Pas de processus en arrière-plan.")
