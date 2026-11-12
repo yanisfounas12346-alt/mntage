@@ -9,9 +9,29 @@ from pathlib import Path
 from unittest.mock import patch
 from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download, download_videos, download_commons_scenes
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
-from video_factory import scene_durations, validate_output, inspect_source_video, _run
+from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video
 
 class VideoPlanningTests(unittest.TestCase):
+    def test_failed_render_removes_partial_output(self):
+        async def fake_voice(script,destination,voice,rate):
+            destination.write_bytes(b"audio")
+            return []
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            def fail_render(args,timeout=1800):
+                (folder/"test-12345678.mp4").write_bytes(b"partial")
+                raise RuntimeError("FFmpeg failed")
+            with patch("video_factory.OUT",folder), \
+                 patch("video_factory.uuid4",return_value=SimpleNamespace(hex="12345678abcdef")), \
+                 patch("video_factory.require_ffmpeg"), \
+                 patch("video_factory.synthesize",side_effect=fake_voice), \
+                 patch("video_factory.duration_seconds",return_value=2.0), \
+                 patch("video_factory.inspect_source_video"), \
+                 patch("video_factory._run",side_effect=fail_render):
+                with self.assertRaisesRegex(RuntimeError,"FFmpeg failed"):
+                    make_video("test","Bonjour",[ ],video_bytes=[b"clip"],captions=False)
+            self.assertFalse((folder/"test-12345678.mp4").exists())
+
     def test_ffmpeg_timeout_is_reported(self):
         with patch("video_factory.subprocess.run",side_effect=subprocess.TimeoutExpired(["ffmpeg"],3)):
             with self.assertRaisesRegex(RuntimeError,"délai"):
