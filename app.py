@@ -112,6 +112,7 @@ with tab_queue:
                     clips=None
                     if job["mode"].startswith("Auto"):
                         found,missing=select_commons_scenes(job["script"],limit=8)
+                        if missing:st.warning("Scènes sans clip : "+", ".join(missing))
                         clips=download_videos(found)
                         pics=[]
                     elif job["mode"].startswith("Vidéos"):
@@ -128,6 +129,10 @@ with tab_queue:
                         if not pics:raise RuntimeError("Aucune photo trouvée.")
                     else:pics=script_to_images(job["script"],job["title"])
                     path=make_video(job["title"],job["script"],pics,job["voice"],captions=bool(job["captions"]),video_bytes=clips)
+                    if job["mode"].startswith("Auto"):
+                        path.with_suffix(".sources.txt").write_text("\n".join(
+                            f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}"
+                            for x in found),encoding="utf-8")
                     finish(job["id"],video=path)
                 st.success(f"Vidéo #{job['id']} créée.")
             except Exception as exc:
@@ -143,6 +148,9 @@ with tab_queue:
             if path and path.is_file():
                 st.video(str(path))
                 st.download_button("Télécharger MP4",path.read_bytes(),file_name=path.name,key=f"dl_{job['id']}")
+                credits=path.with_suffix(".sources.txt")
+                if credits.is_file():
+                    st.download_button("Télécharger les crédits",credits.read_bytes(),file_name=credits.name,key=f"credits_{job['id']}")
                 st.markdown("**Publication YouTube (privée uniquement)**")
                 description=st.text_area("Description YouTube",key=f"desc_{job['id']}")
                 confirm=st.checkbox("Je confirme vouloir envoyer cette vidéo en privé sur mon compte YouTube",key=f"confirm_{job['id']}")
