@@ -90,7 +90,7 @@ def validate_output(path: Path, expected_duration: float) -> None:
     if (videos[0].get("width"),videos[0].get("height")) != (WIDTH,HEIGHT):
         raise RuntimeError("Export incorrect : résolution verticale 1080x1920 attendue.")
     actual=float(data.get("format",{}).get("duration",0))
-    if abs(actual-expected_duration)>1.0:
+    if not (actual > 0) or abs(actual-expected_duration)>1.0:
         raise RuntimeError(f"Durée incorrecte : {actual:.1f}s au lieu de {expected_duration:.1f}s.")
 
 def inspect_source_video(path: Path) -> dict:
