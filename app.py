@@ -6,7 +6,7 @@ from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
 from job_store import enqueue, jobs, next_job, finish, update_metrics, set_youtube
-from stock_media import search_images, download_images, search_videos, download_videos, scene_queries
+from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
 st.markdown("""
@@ -62,12 +62,8 @@ with tab_create:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
                     if mode.startswith("Vidéos"):
-                        queries=scene_queries(script,limit=8)
-                        found=[]
-                        for query in queries:
-                            matches=search_videos(query,limit=2)
-                            if matches:found.append(matches[0])
-                        if not found:raise RuntimeError("Aucun clip trouvé. Essaie le mode Éco ou reformule ton script.")
+                        found,missing=select_video_scenes(script,limit=8)
+                        if missing:st.warning("Certaines scènes n'ont pas de clip correspondant : "+", ".join(missing))
                         clips=download_videos(found)
                         st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
                         st.info("Montage automatique avec de vrais clips ; vérifie que chaque plan illustre correctement ton texte.")
@@ -97,11 +93,8 @@ with tab_queue:
                 with st.spinner(f"Génération : {job['title']}"):
                     clips=None
                     if job["mode"].startswith("Vidéos"):
-                        found=[]
-                        for query in scene_queries(job["script"],limit=8):
-                            matches=search_videos(query,limit=2)
-                            if matches:found.append(matches[0])
-                        if not found:raise RuntimeError("Aucun clip trouvé.")
+                        found,missing=select_video_scenes(job["script"],limit=8)
+                        if missing:st.warning("Scènes sans clip : "+", ".join(missing))
                         clips=download_videos(found)
                         pics=[]
                     elif job["mode"].startswith("IA locale"):
