@@ -30,7 +30,8 @@ class MotionStudioTests(unittest.TestCase):
         scenes = plan_mirror_scenes(SCRIPT, 86.0)
         self.assertEqual(scenes[0].start, 0.0)
         self.assertEqual(scenes[-1].end, 86.0)
-        self.assertEqual(scenes[0].kind, "approach")
+        self.assertEqual(scenes[0].kind, "distort")  # 1-second visual hook
+        self.assertEqual(scenes[1].kind, "approach")
         self.assertIn("distort", [scene.kind for scene in scenes])
         self.assertIn("experiment", [scene.kind for scene in scenes])
         for a, b in zip(scenes, scenes[1:]):
