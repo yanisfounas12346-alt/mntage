@@ -65,7 +65,7 @@ def prepare_narration(script: str) -> str:
     Preserve vocabulary and word order so caption boundaries still match speech.
     """
     text = re.sub(r"[ \\t]+", " ", script.strip())
-    text = re.sub(r"\\s*\\n+\\s*", ". ", text)
+    text = re.sub(r"\\s*\\n+\\s*", ". ", text)\n    text = re.sub(r"([.!?])\\s*\\.\\s+", r"\\1 ", text)
     text = re.sub(r"\\s+([,;:.!?])", r"\\1", text)
     text = re.sub(r"([.!?])(?=[^\\s.!?])", r"\\1 ", text)
     text = re.sub(r"([,;:])(?=[^\\s])", r"\\1 ", text)
