@@ -91,7 +91,7 @@ with tab_create:
             st.caption(f"Coût prévisionnel avec marge : {estimate_eur(cloud_count):.4f} € ; réservé ce mois : {spent_eur():.4f} €. Prix et taux de change à vérifier chez fal.")
             cloud_approval=st.checkbox("J'autorise cet appel payant à fal.ai pour les images de cette vidéo.",value=False)
         dynamic_edit=(st.checkbox("✂️ Coupes rapides — sans autocollants superposés",value=science_mode,
-                          help="Images fixes montées sans ajout de personnage ou d’icône. Pour de vraies animations, utilise Studio animé 2D."
+                                  help="Images fixes montées sans ajout de personnage ou d’icône. Pour de vraies animations, utilise Studio animé 2D.")
                       if not studio_selected else False)
         if studio_selected:
             st.caption("Animation 2D scénarisée : aucun autocollant ni zoom de caméra ajouté.")
