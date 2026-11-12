@@ -24,6 +24,8 @@ SOURCE_FILES = (
     "motion_director.py",
     "speech_motion.py",
     "tiktok_pro.py",
+    "tools/checkpoint.py",
+    "tools/next_request.py",
 )
 
 
