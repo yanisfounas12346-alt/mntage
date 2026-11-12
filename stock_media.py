@@ -55,7 +55,7 @@ def search_videos(query,limit=3):
     data=_api("videos/search",{"query":query[:100],"per_page":min(10,max(1,limit)),"orientation":"portrait"})
     out=[]
     for video in data.get("videos",[]):
-        files=[f for f in video.get("video_files",[]) if f.get("file_type")=="video/mp4" and f.get("link")]
+        files=[f for f in video.get("video_files",[]) if f.get("file_type")=="video/mp4" and f.get("link") and (not f.get("size") or f["size"]<=35*1024*1024)]
         files.sort(key=lambda f:(0 if (f.get("width") or 0) >= 540 and (f.get("height") or 0) >= 960 else 1, abs((f.get("width") or 540)-720)+abs((f.get("height") or 960)-1280)))
         if files:
             out.append({"url":files[0]["link"],"credit":video.get("user",{}).get("name",""),"page":video.get("url",""),"duration":video.get("duration",0),"id":video.get("id")})
@@ -145,7 +145,7 @@ def search_pixabay_videos(query, limit=6):
     result=[]
     for hit in data.get("hits",[]):
         versions=hit.get("videos",{})
-        version=next((versions.get(k) for k in ("medium","small","large","tiny") if versions.get(k,{}).get("url") and (versions[k].get("size") or 0)<55*1024*1024),None)
+        version=next((versions.get(k) for k in ("medium","small","large","tiny") if versions.get(k,{}).get("url") and (versions[k].get("size") or 0)<=35*1024*1024),None)
         if not version:continue
         result.append({"id":hit.get("id"),"url":version["url"],"page":hit.get("pageURL",""),"credit":hit.get("user",""),"duration":hit.get("duration",0)})
     return result
