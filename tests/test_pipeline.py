@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download
+from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download, download_videos
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output, inspect_source_video
 
@@ -84,6 +84,12 @@ class VideoPlanningTests(unittest.TestCase):
                 metadata["format"]["duration"]="0.1"
                 with self.assertRaisesRegex(RuntimeError,"trop court"):
                     inspect_source_video(path)
+
+    def test_download_videos_limits_each_source(self):
+        with patch("stock_media._download",return_value=b"video") as download:
+            clips=download_videos([{"url":"https://example.org/a.mp4"}])
+        self.assertEqual(clips,[b"video"])
+        self.assertEqual(download.call_args.args[1],35*1024*1024)
 
     def test_media_download_guards(self):
         with self.assertRaisesRegex(RuntimeError,"HTTPS"):
