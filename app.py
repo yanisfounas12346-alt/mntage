@@ -38,7 +38,7 @@ with tab_create:
     if science_mode:
         st.caption("Studio animé 2D original disponible pour le miroir ; autres sujets : dessins locaux ou fal.ai. Le script reste à vérifier scientifiquement.")
         if studio_selected:
-            st.info("NOUVEAU : accroche visuelle dès la première seconde, cinq plans en aperçu, gestes, sourcils, clignements, bouche animée et reflet déformable. Caméra stable. Synchronisation labiale approximative.")
+            st.info("Studio 2D : cadrages courts, gestes progressifs, reflet déformable et caméra stable. Sur une vraie vidéo, la bouche suit le volume de la narration et les silences. Synchronisation approximative, sans changement de voix.")
         if science_topic != "Aucun" and st.button("✍️ Charger un exemple de script"):
             st.session_state["science_script"]=sample_script(science_topic)
     title=st.text_input("Titre","Mon premier Short")
