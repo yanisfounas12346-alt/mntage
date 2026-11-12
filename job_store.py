@@ -53,6 +53,14 @@ def finish(job_id, video=None, error=None):
         con.execute("UPDATE jobs SET status=?,video=?,error=? WHERE id=?",
                     ("failed" if error else "done",str(video) if video else None,error,job_id))
 
+def cancel_queued(job_id):
+    """Cancel only pending jobs; never interrupt an active FFmpeg render."""
+    with connect() as con:
+        result=con.execute(
+            "UPDATE jobs SET status='cancelled' WHERE id=? AND status='queued'",
+            (job_id,))
+        return result.rowcount == 1
+
 def retry_failed(job_id):
     """Return only a failed task to the queue; preserve its script and settings."""
     with connect() as con:
