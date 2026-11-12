@@ -1,9 +1,11 @@
 """Offline regression checks: python -m unittest discover -s tests -v"""
 import tempfile
+import io
+import json
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from stock_media import scene_queries, select_video_scenes
+from stock_media import scene_queries, select_video_scenes, search_commons_videos
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations
 
@@ -44,6 +46,18 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertEqual(len(durations),3)
         self.assertAlmostEqual(sum(durations),12.0)
         self.assertTrue(all(d>0 for d in durations))
+
+    def test_commons_license_and_ranking(self):
+        hits={"query":{"pages":{
+            "1":{"pageid":1,"title":"File:Random clip.webm","imageinfo":[{"mime":"video/webm","size":2000,"url":"https://example.org/a.webm","extmetadata":{"LicenseShortName":{"value":"CC BY 4.0"}}}]},
+            "2":{"pageid":2,"title":"File:Ocean waves.webm","imageinfo":[{"mime":"video/webm","size":3000,"url":"https://example.org/b.webm","extmetadata":{"LicenseShortName":{"value":"CC0"}}}]},
+            "3":{"pageid":3,"title":"File:Ocean waves restricted.webm","imageinfo":[{"mime":"video/webm","size":3000,"url":"https://example.org/c.webm","extmetadata":{"LicenseShortName":{"value":"All Rights Reserved"}}}]}
+        }}}
+        response=io.BytesIO(json.dumps(hits).encode("utf-8"))
+        with patch("stock_media.urlopen",return_value=response):
+            results=search_commons_videos("ocean waves",limit=1)
+        self.assertEqual(len(results),1)
+        self.assertEqual(results[0]["id"],2)
 
     def test_short_subtitles(self):
         with tempfile.TemporaryDirectory() as tmp:
