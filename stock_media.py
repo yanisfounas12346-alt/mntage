@@ -14,6 +14,11 @@ def scene_queries(script,limit=8):
     """Turn French narration into concrete English footage searches."""
     sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
     topics=[
+        (("dauphin","dauphins"),"dolphins swimming"),
+        (("baleine","baleines"),"whales underwater"),
+        (("requin","requins"),"sharks underwater"),
+        (("profondeur","profondeurs","abysses","abyssal","sous-marin"),"deep sea underwater"),
+        (("corail","coraux","récif","récifs"),"coral reef underwater"),
         (("forêt","arbre","bois","jungle"),"forest trees"),
         (("océan","mer","vague","plage","eau"),"ocean waves"),
         (("espace","étoile","galaxie","planète","univers"),"outer space stars"),
@@ -46,7 +51,10 @@ def scene_queries(script,limit=8):
                     if token==keyword or token==keyword+"s":
                         matches.append((position,query))
         if matches:
-            queries.append(min(matches,key=lambda item:item[0])[1])
+            # Specific subjects should win over generic scene context ("ocean").
+            priority={"dolphins swimming","whales underwater","sharks underwater",
+                      "deep sea underwater","coral reef underwater"}
+            queries.append(min(matches,key=lambda item:(0 if item[1] in priority else 1,item[0]))[1])
         else:
             stop={"avec","pour","dans","cette","comme","mais","plus","nous","vous",
                   "elles","sont","être","avoir","cest","tout","tous","leurs","alors",
@@ -199,6 +207,11 @@ def search_commons_videos(query, limit=6):
     # Small curated vocabulary: improve English filename matching without paid APIs.
     synonyms={
         "ocean":{"sea","seas","marine","water","waves"},
+        "dolphins":{"dolphin","cetacean","cetaceans"},
+        "whales":{"whale","humpback","cetacean","cetaceans"},
+        "sharks":{"shark"},
+        "underwater":{"submarine","ocean","marine","sea","seabed"},
+        "coral":{"corals","reef","reefs"},
         "waves":{"surf","ocean","sea","wave"},
         "forest":{"woods","woodland","trees","jungle"},
         "trees":{"woodland","forest","tree"},
