@@ -289,7 +289,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
                           "-t",str(scene_duration),"-an","-vf",
                           "fps=25,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,format=yuv420p",
-                          "-c:v","libx264","-preset","veryfast","-crf","23",str(clip)])
+                          "-c:v","libx264","-preset","veryfast","-crf","19",str(clip)])
                     clips.append(clip)
                     continue
                 # Compressed images can be tiny on disk but huge once decoded.
@@ -301,7 +301,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                         im = ImageOps.exif_transpose(im).convert("RGB")
                     im = ImageOps.fit(im, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
                     img = work / f"image_{idx:03d}.jpg"
-                    im.save(img, quality=85)
+                    im.save(img, quality=95, subsampling=0)
                 clip = work / f"clip_{idx:03d}.mp4"
                 frames = max(1, round(scene_duration * 25))
                 # Science WTF: faster cuts, stable framing. No continuous panning or zooming.
@@ -323,12 +323,12 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     _run(["ffmpeg","-y","-loglevel","error","-loop","1","-framerate","25",
                           "-i",str(img),"-loop","1","-framerate","25","-i",str(mascot),
                           "-filter_complex",filter_graph,"-map","[v]",
-                          "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast",
-                          "-crf","27",str(clip)])
+                          "-frames:v",str(frames),"-c:v","libx264","-preset","veryfast",
+                          "-crf","19",str(clip)])
                 else:
                     _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
                           "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
-                          "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
+                          "-frames:v",str(frames),"-c:v","libx264","-preset","veryfast","-crf","19",str(clip)])
                 clips.append(clip)
             concat = work / "clips.txt"
             # Relative paths avoid Windows drive-letter escaping in FFmpeg concat lists.
@@ -363,7 +363,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 else:
                     cmd += ["-map","0:v:0","-map","0:a:0"]
                 cmd += ["-t",str(duration),"-c:v","libx264","-preset","veryfast",
-                        "-crf","22","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
+                        "-crf","19","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
                 # The subtitle filter resolves its path from the process cwd.
                 try:
                     result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True,timeout=1800)
