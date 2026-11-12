@@ -12,6 +12,23 @@ from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds, validate_image_dimensions
 
 class QueueNarrationTests(unittest.TestCase):
+    def test_finish_only_updates_running_jobs(self):
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(job_store,"DB",Path(tmp)/"queue.sqlite3"):
+            cancelled=job_store.enqueue("Annulé","Texte","auto","fr-FR-DeniseNeural",True)
+            self.assertTrue(job_store.cancel_queued(cancelled))
+            self.assertFalse(job_store.finish(cancelled,video="unexpected.mp4"))
+            self.assertEqual(job_store.jobs()[0]["status"],"cancelled")
+
+            active=job_store.enqueue("Actif","Texte","auto","fr-FR-DeniseNeural",True)
+            self.assertEqual(job_store.next_job()["id"],active)
+            self.assertTrue(job_store.finish(active,video="ready.mp4"))
+            self.assertFalse(job_store.finish(active,error="late error"))
+            current=job_store.jobs()[0]
+            self.assertEqual(current["status"],"done")
+            self.assertEqual(current["video"],"ready.mp4")
+
     def test_voice_rate_saved_and_read_from_queue(self):
         import job_store
         with tempfile.TemporaryDirectory() as tmp, \
