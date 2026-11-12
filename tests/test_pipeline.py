@@ -220,6 +220,20 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertEqual(download.call_count,2)
         self.assertEqual(missing,[])
 
+    def test_commons_fallback_uses_subject_not_generic_modifier(self):
+        clip={"id":42,"url":"https://example.org/space.webm"}
+        def search(query,limit):
+            return [clip] if query=="space" else []
+        with patch("stock_media.scene_queries",return_value=["outer space stars"]), \
+             patch("stock_media.search_commons_videos",side_effect=search) as lookup, \
+             patch("stock_media._download",return_value=b"video"), \
+             patch("stock_media._valid_video_payload",return_value=True):
+            found,clips,missing=download_commons_scenes("Les étoiles.",limit=1)
+        self.assertEqual(found[0]["id"],42)
+        self.assertEqual([call.args[0] for call in lookup.call_args_list],
+                         ["outer space stars","space"])
+        self.assertFalse(missing)
+
     def test_commons_broadens_empty_search(self):
         clip={"id":3,"url":"https://example.org/mountain.webm"}
         def search(query,limit):
