@@ -93,7 +93,13 @@ def plan_mirror_scenes(script: str, duration: float, boundaries: list[dict] | No
     if len(result) < 4:
         raise ValueError("Storyboard miroir incomplet : colle le script du miroir pour animer correctement l'histoire.")
     # Cut the narration into short compositions without moving the camera.
+    # Open with the strange reflection for a short visual hook, then explain it.
+    # No camera movement; the story still follows the narration after the hook.
     shots = []
+    if duration >= 16 and result[0].end >= 2.1:
+        hook_duration = min(1.1, result[0].end * .42)
+        shots.append(MotionScene("distort", 0.0, hook_duration, 2, .75, .94))
+        result[0] = MotionScene(result[0].kind, hook_duration, result[0].end)
     for beat in result:
         shot_count = max(1, math.ceil((beat.end - beat.start) / 3.25))
         for part in range(shot_count):
@@ -317,9 +323,12 @@ def render_mirror_preview(destination: Path, seconds: float = 8.0) -> Path:
     import tempfile
     if seconds <= 0 or seconds > 15:
         raise ValueError("L'aperçu doit durer entre 0 et 15 secondes.")
-    shots = [MotionScene("stare",0.0,seconds*.34,1),
-             MotionScene("distort",seconds*.34,seconds*.67,2,0.0,0.5),
-             MotionScene("distort",seconds*.67,seconds,3,0.5,1.0)]
+    # Five purposeful edits: visual hook, entry, stare, surprise, brain reveal.
+    shots = [MotionScene("distort",0.0,seconds*.15,2,.75,.96),
+             MotionScene("approach",seconds*.15,seconds*.30,0),
+             MotionScene("stare",seconds*.30,seconds*.50,3),
+             MotionScene("distort",seconds*.50,seconds*.70,1),
+             MotionScene("brain",seconds*.70,seconds,2)]
     with tempfile.TemporaryDirectory() as folder:
         files=[]
         for i,shot in enumerate(shots):
