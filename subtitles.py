@@ -44,16 +44,24 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     path.write_text(header+"\n".join(lines)+"\n",encoding="utf-8-sig")
     return path
 
-def timed_groups(boundaries, max_words=4):
-    """Group actual TTS WordBoundary timings into readable caption beats."""
-    if not boundaries:return []
+def timed_groups(boundaries, max_words=4, max_gap=0.42):
+    """Readable subtitle beats from real TTS timing; split at long pauses."""
+    if not boundaries:
+        return []
     groups=[]
-    for i in range(0,len(boundaries),max_words):
-        group=boundaries[i:i+max_words]
-        text=" ".join(str(w["text"]).strip() for w in group).strip()
-        start=max(0.0,float(group[0]["offset"])/10000000)
-        end=max(start+0.08,float(group[-1]["offset"]+group[-1]["duration"])/10000000)
-        groups.append((start,end,text))
+    current=[]
+    for word in boundaries:
+        text=str(word.get("text","")).strip()
+        if not text:
+            continue
+        start=max(0.0,float(word["offset"])/10000000)
+        end=max(start+0.08,float(word["offset"]+word["duration"])/10000000)
+        if current and (len(current)>=max_words or start-current[-1][1]>max_gap):
+            groups.append((current[0][0],current[-1][1]," ".join(w[2] for w in current)))
+            current=[]
+        current.append((start,end,text))
+    if current:
+        groups.append((current[0][0],current[-1][1]," ".join(w[2] for w in current)))
     return groups
 
 def write_timed_srt(boundaries,path):
