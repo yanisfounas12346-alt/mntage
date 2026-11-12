@@ -8,7 +8,7 @@ from pathlib import Path
 from io import BytesIO
 import edge_tts
 from PIL import Image, ImageOps
-from subtitles import write_srt
+from subtitles import write_srt, write_ass
 
 OUT = Path("outputs").resolve()
 OUT.mkdir(exist_ok=True)
@@ -78,8 +78,9 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         filters = []
         if captions:
             srt = write_srt(script, duration, work / "captions.srt")
+            write_ass(script, duration, work / "captions.ass")
             # Use forward-slash relative filename from cwd to avoid Windows drive colon.
-            filters.append("subtitles=captions.srt:force_style='FontName=Arial,FontSize=19,Outline=2,Shadow=1,MarginV=100'")
+            filters.append("ass=captions.ass")
         if music:
             music_path = work / "music.mp3"
             music_path.write_bytes(music)
