@@ -26,6 +26,7 @@ SOURCE_FILES = (
     "tiktok_pro.py",
     "tools/checkpoint.py",
     "tools/next_request.py",
+    "tools/session_handoff.py",
 )
 
 
