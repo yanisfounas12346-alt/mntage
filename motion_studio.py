@@ -7,6 +7,7 @@ no camera panning, no external assets or paid APIs.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import math
 import re
 import subprocess
@@ -130,6 +131,34 @@ def _ease(t: float) -> float:
     return t * t * (3 - 2 * t)
 
 
+@lru_cache(maxsize=128)
+def _display_font(pixel_size: int):
+    """Legible, cached bold typography on Windows/Linux; no font download.
+
+    Fonts bundled by the operating system have different names. Relying only on
+    DejaVuSans-Bold.ttf can silently turn every label into tiny bitmap text
+    on Windows. Resolve once per pixel size, not once per animation frame.
+    """
+    pixel_size = max(8, int(pixel_size))
+    for family in (
+        "C:/Windows/Fonts/segoeuib.ttf",  # Windows: Segoe UI Semibold
+        "C:/Windows/Fonts/arialbd.ttf",   # Windows: Arial Bold
+        "DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "LiberationSans-Bold.ttf",
+    ):
+        try:
+            return ImageFont.truetype(family, pixel_size)
+        except (OSError, ValueError):
+            continue
+    # Pillow >= 10.1 provides a scalable bundled fallback font.
+    try:
+        return ImageFont.load_default(size=pixel_size)
+    except TypeError:
+        # Older Pillow fallback: text still renders instead of crashing.
+        return ImageFont.load_default()
+
+
 class _Painter:
     """Scale one original 540x960 design consistently to any export resolution."""
     def __init__(self, image: Image.Image):
@@ -153,10 +182,7 @@ class _Painter:
                     width=max(1, round(width * self.s)), joint="curve")
 
     def text(self, xy, value, color=WHITE, size=23, anchor="mm"):
-        try:
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", round(size * self.s))
-        except OSError:
-            font = ImageFont.load_default()
+        font = _display_font(round(size * self.s))
         self.d.text(self.p(*xy), value, font=font, fill=color, anchor=anchor)
 
 
