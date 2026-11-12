@@ -248,36 +248,43 @@ def _valid_video_payload(payload):
 
 
 def download_commons_scenes(script, limit=8):
-    """Try alternative licensed footage when a Commons clip cannot be downloaded."""
+    """Select valid licensed footage; retry alternative clips and broader searches."""
     selected, payloads, missing = [], [], []
     used=set()
+    attempted=set()
     total=0
     for query in scene_queries(script,limit):
-        try:
-            candidates=search_commons_videos(query,limit=8)
-            if not candidates and len(query.split())>1:
-                candidates=search_commons_videos(query.split()[0],limit=8)
-        except Exception as exc:
-            raise RuntimeError("Recherche Wikimedia Commons indisponible : "+str(exc)) from exc
         picked=False
-        for candidate in candidates:
-            if candidate["id"] in used:
-                continue
-            remaining=300*1024*1024-total
-            if remaining<=0:
+        searches=[query]
+        if len(query.split())>1:
+            searches.append(query.split()[0])
+        for search in searches:
+            if picked:
                 break
             try:
-                payload=_download(candidate["url"],min(35*1024*1024,remaining))
-                if not _valid_video_payload(payload):
+                candidates=search_commons_videos(search,limit=8)
+            except Exception as exc:
+                raise RuntimeError("Recherche Wikimedia Commons indisponible : "+str(exc)) from exc
+            for candidate in candidates:
+                identifier=candidate["id"]
+                if identifier in used or identifier in attempted:
                     continue
-            except (OSError,RuntimeError,ValueError):
-                continue
-            selected.append(candidate)
-            payloads.append(payload)
-            used.add(candidate["id"])
-            total+=len(payload)
-            picked=True
-            break
+                attempted.add(identifier)
+                remaining=300*1024*1024-total
+                if remaining<=0:
+                    break
+                try:
+                    payload=_download(candidate["url"],min(35*1024*1024,remaining))
+                    if not _valid_video_payload(payload):
+                        continue
+                except (OSError,RuntimeError,ValueError):
+                    continue
+                selected.append(candidate)
+                payloads.append(payload)
+                used.add(identifier)
+                total+=len(payload)
+                picked=True
+                break
         if not picked:
             missing.append(query)
     if not payloads:
