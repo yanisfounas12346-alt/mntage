@@ -56,6 +56,18 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertAlmostEqual(sum(durations),12.0)
         self.assertTrue(all(d>0 for d in durations))
 
+    def test_commons_accepts_visual_synonyms(self):
+        hits={"query":{"pages":{
+            "1":{"pageid":1,"title":"File:Alps sunrise.webm","imageinfo":[
+                {"mime":"video/webm","size":2000,"url":"https://example.org/alps.webm",
+                 "extmetadata":{"LicenseShortName":{"value":"CC0"}}}]},
+            "2":{"pageid":2,"title":"File:Random celebration.webm","imageinfo":[
+                {"mime":"video/webm","size":2000,"url":"https://example.org/random.webm",
+                 "extmetadata":{"LicenseShortName":{"value":"CC0"}}}]}}}}
+        with patch("stock_media.urlopen",return_value=io.BytesIO(json.dumps(hits).encode())):
+            results=search_commons_videos("mountain landscape",limit=6)
+        self.assertEqual([item["id"] for item in results],[1])
+
     def test_commons_rejects_unrelated_titles(self):
         hits={"query":{"pages":{
             "1":{"pageid":1,"title":"File:Random celebration.webm","imageinfo":[
