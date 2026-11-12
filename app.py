@@ -97,7 +97,7 @@ with tab_create:
         if not script.strip():st.warning("Colle ton script.")
         elif music or images or user_clips or mode.startswith("Mes clips"):st.warning("Pour la file, utilise un mode sans fichiers personnels : les clips importés ne sont pas conservés.")
         else:
-            enqueue(title,script,mode,voice,captions)
+            enqueue(title,script,mode,voice,captions,voice_speed)
             st.success("Ajouté à la file. Lance ensuite le prochain travail dans l'onglet File & historique.")
     if st.session_state.get("last_video"):
         p=Path(st.session_state["last_video"])
@@ -132,7 +132,7 @@ with tab_queue:
                         pics=download_images(search_images(job["title"],limit=4))
                         if not pics:raise RuntimeError("Aucune photo trouvée.")
                     else:pics=script_to_images(job["script"],job["title"])
-                    path=make_video(job["title"],job["script"],pics,job["voice"],captions=bool(job["captions"]),video_bytes=clips)
+                    path=make_video(job["title"],job["script"],pics,job["voice"],captions=bool(job["captions"]),voice_rate=job["voice_rate"],video_bytes=clips)
                     if job["mode"].startswith("Auto"):
                         path.with_suffix(".sources.txt").write_text("\n".join(
                             f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}"
