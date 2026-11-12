@@ -21,3 +21,25 @@ jobs:
           ffmpeg -filters | grep -E '(^| )ass '
       - name: Run offline regression and real FFmpeg smoke tests
         run: python -m unittest discover -s tests -v
+
+  validate-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install FFmpeg with subtitle support
+        shell: pwsh
+        run: |
+          choco install ffmpeg -y --no-progress
+          $env:PATH = "C:\ProgramData\chocolatey\bin;$env:PATH"
+          ffmpeg -version
+      - name: Prepare Windows virtual environment
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+      - name: Run the same Windows verification as local users
+        shell: pwsh
+        run: .\verify_windows.ps1
