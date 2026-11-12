@@ -213,7 +213,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 try:
                     validate_music_audio(music_path)
                     duration_seconds(music_path)
-                except (RuntimeError, OSError, ValueError) as exc:
+                except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
                     raise ValueError("Musique MP3 invalide ou illisible.") from exc
             audio = work / "voice.mp3"
             boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
