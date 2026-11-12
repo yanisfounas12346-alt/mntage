@@ -10,6 +10,7 @@ import edge_tts
 from PIL import Image, ImageOps
 from subtitles import write_srt, write_ass, write_timed_srt, write_timed_ass
 
+WIDTH, HEIGHT = 1080, 1920
 OUT = Path("outputs").resolve()
 OUT.mkdir(exist_ok=True)
 
@@ -63,6 +64,30 @@ def scene_durations(duration: float, boundaries: list[dict], clip_count: int) ->
     cuts.append(duration)
     return [b-a for a,b in zip(cuts,cuts[1:])]
 
+def validate_output(path: Path, expected_duration: float) -> None:
+    """Reject missing, truncated, or incorrectly sized exports."""
+    import json
+    if not path.is_file() or path.stat().st_size < 1024:
+        raise RuntimeError("Le MP4 exporté est absent ou vide.")
+    result=subprocess.run(
+        ["ffprobe","-v","error","-show_entries",
+         "format=duration:stream=codec_type,width,height",
+         "-of","json",str(path)],
+        capture_output=True,text=True)
+    if result.returncode:
+        raise RuntimeError("Impossible de vérifier le MP4 : "+result.stderr[-500:])
+    data=json.loads(result.stdout)
+    streams=data.get("streams",[])
+    videos=[s for s in streams if s.get("codec_type")=="video"]
+    audios=[s for s in streams if s.get("codec_type")=="audio"]
+    if not videos or not audios:
+        raise RuntimeError("Export incomplet : vidéo ou voix absente.")
+    if (videos[0].get("width"),videos[0].get("height")) != (WIDTH,HEIGHT):
+        raise RuntimeError("Export incorrect : résolution verticale 1080x1920 attendue.")
+    actual=float(data.get("format",{}).get("duration",0))
+    if abs(actual-expected_duration)>1.0:
+        raise RuntimeError(f"Durée incorrecte : {actual:.1f}s au lieu de {expected_duration:.1f}s.")
+
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
@@ -99,13 +124,13 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 # Repeat short source clips if needed, discard their original audio.
                 _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
                       "-t",str(scene_duration+0.08),"-an","-vf",
-                      "fps=25,scale=540:960:force_original_aspect_ratio=increase,crop=540:960,setsar=1,format=yuv420p",
-                      "-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
+                      "fps=25,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,format=yuv420p",
+                      "-c:v","libx264","-preset","veryfast","-crf","23",str(clip)])
                 clips.append(clip)
                 continue
             with Image.open(BytesIO(data)) as im:
                 im = ImageOps.exif_transpose(im).convert("RGB")
-                im = ImageOps.fit(im, (540, 960), method=Image.Resampling.LANCZOS)
+                im = ImageOps.fit(im, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
                 img = work / f"image_{idx:03d}.jpg"
                 im.save(img, quality=85)
             clip = work / f"clip_{idx:03d}.mp4"
@@ -114,7 +139,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             zoom = "min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))"
             x = "iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)"
             _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
-                  "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=540x960:fps=25,format=yuv420p",
+                  "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
                   "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
             clips.append(clip)
         concat = work / "clips.txt"
@@ -152,11 +177,12 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             else:
                 cmd += ["-map","0:v:0","-map","0:a:0"]
             cmd += ["-t",str(duration),"-c:v","libx264","-preset","veryfast",
-                    "-crf","25","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
+                    "-crf","22","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
             # The subtitle filter resolves its path from the process cwd.
             result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True)
             if result.returncode:
                 raise RuntimeError("FFmpeg (sous-titres/musique) : "+result.stderr[-1400:])
         if captions:
             shutil.copy2(work / "captions.srt", OUT / f"{slugify(title)}.srt")
+    validate_output(output, duration)
     return output
