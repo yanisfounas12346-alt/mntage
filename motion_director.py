@@ -55,14 +55,58 @@ def walk_pose(t):
     return body_sway,body_bob,tuple(legs),stride
 
 
-def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,progress=0.):
+def walk_pose_with_translation(t, root_x_at, *, scale=1.0):
+    """Anchor stance feet in stage coordinates while the actor moves.
+
+    root_x_at(absolute_seconds) gives the nominal root X, excluding body sway.
+    The previous touchdown holds throughout stance. In swing, a smooth eased
+    path travels from the prior contact to the next, without contact snaps.
+    This is deterministic across rendered cuts (no mutable frame state).
+    """
+    if scale <= 0:
+        raise ValueError("Character scale must be positive.")
+    sway, bob, legs, stride = walk_pose(t)
+    phase = 6.2*t
+    root_now = root_x_at(t)
+    half_step = math.pi/6.2
+    adjusted = []
+    for side, (hip, knee, foot) in zip((-1, 1), legs):
+        # A left foot swings over phase [0, pi), a right over [pi, 2*pi).
+        phase_offset = 0.0 if side == -1 else math.pi
+        local_phase = (phase-phase_offset) % math.tau
+        swing_start = (phase-local_phase)/6.2
+        previous_contact = root_x_at(swing_start-half_step)
+        next_contact = root_x_at(swing_start+half_step)
+        if local_phase < math.pi:
+            # Zero horizontal velocity at toe-off and touchdown.
+            transition = (1-math.cos(local_phase))*.5
+            stage_x = _lerp(previous_contact, next_contact, transition)
+            # Keep the original in-place stride, but prevent a backwards
+            # overshoot when the character is actually travelling.
+            travel = abs(next_contact-previous_contact)
+            idle_weight = max(0.0, 1.0-travel/(12*scale))
+            stage_x += 23*scale*math.sin(local_phase)**2*idle_weight
+        else:
+            stage_x = next_contact
+        stage_x += side*34*scale
+        # In _actor, world X = nominal root + sway*scale + local*scale.
+        foot_x = (stage_x-root_now)/scale - sway
+        delta = foot_x-foot[0]
+        adjusted.append((hip, (knee[0]+delta*.45, knee[1]), (foot_x, foot[1])))
+    return sway, bob, tuple(adjusted), stride
+
+
+def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,progress=0.,root_x_at=None):
     """Articulated original character: brows, blinks, four mouth shapes and actions."""
     talk=min(1.,max(0.,mouth))
     shock=1. if feeling=="surprised" else 0.
     x+=(-8 if not mirror else 8)*shock*math.sin(min(1.,progress*2.)*math.pi/2)*s
     walking=action=="walk"
     if walking:
-        sway,bob,walk_legs,stride=walk_pose(t)
+        if root_x_at is None:
+            sway,bob,walk_legs,stride=walk_pose(t)
+        else:
+            sway,bob,walk_legs,stride=walk_pose_with_translation(t,root_x_at,scale=s)
         x+=sway*s
         y+=bob*s
     else:
@@ -314,7 +358,7 @@ def _detail_cutaway(p, kind, t, arc, mouth, *, shot=4):
 
 def draw_professional_frame(base: Image.Image,kind: str,shot: int,
                             progress: float,seconds: float,mouth: float,beat_progress=None,
-                            absolute_seconds=None)->Image.Image:
+                            absolute_seconds=None,beat_rate=None)->Image.Image:
     """Storyboard-aware animated frame with a stable camera and independent layers."""
     frame=base.copy()
     p=_Painter(frame)
@@ -415,8 +459,19 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
             _mirror(p,365,460,214,398,t,distortion=.08*_pulse(t))
             _actor(p,156,676,.85,t,mouth=mouth,action="point",progress=arc)
         else:
-            x=-110+260*_ease_out(arc*1.7) if kind=="approach" else 153
+            root_x_at = None
+            if kind == "approach":
+                # Align touchdown anchors with the same continuous narrative
+                # progress used by the character position, even across cuts.
+                rate = (1/seconds if beat_rate is None else beat_rate)
+                def root_x_at(sample_time):
+                    sample_arc = arc+(sample_time-t)*rate
+                    return -110+260*_ease_out(sample_arc*1.7)
+                x = root_x_at(t)
+            else:
+                x = 153
             _mirror(p,377,468,213,409,t,distortion=0.)
             _actor(p,x,678,.83,t,mouth=mouth,
-                   action="walk" if kind=="approach" else "inspect",progress=arc)
+                   action="walk" if kind=="approach" else "inspect",
+                   progress=arc,root_x_at=root_x_at)
     return frame

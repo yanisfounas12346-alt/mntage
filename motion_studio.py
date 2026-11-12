@@ -318,11 +318,13 @@ def _brain(p, cx=270, cy=370, t=0.0, scale=1.0):
     p.line([(cx,cy-110*scale),(cx,cy+114*scale)], (7,24,38), 8*scale)
 
 
-def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0, beat_progress=None, absolute_seconds=None):
+def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0,
+                beat_progress=None, absolute_seconds=None, beat_rate=None):
     """Draw an original scene composed of background, actions and optical effect."""
     from motion_director import draw_professional_frame
     return draw_professional_frame(base, kind, shot, progress, seconds, mouth,
-                                   beat_progress=beat_progress, absolute_seconds=absolute_seconds)
+                                   beat_progress=beat_progress, absolute_seconds=absolute_seconds,
+                                   beat_rate=beat_rate)
 
 
 def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
@@ -353,7 +355,8 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
             arc=scene.beat_from+(scene.beat_to-scene.beat_from)*progress
             image=_draw_frame((width,height),scene.kind,progress,
                               scene.end-scene.start,base,shot=scene.shot,mouth=mouth,
-                              beat_progress=arc,absolute_seconds=absolute_seconds)
+                              beat_progress=arc,absolute_seconds=absolute_seconds,
+                              beat_rate=(scene.beat_to-scene.beat_from)/(scene.end-scene.start))
             proc.stdin.write(image.tobytes())
         proc.stdin.close()
         assert proc.stderr is not None
