@@ -263,7 +263,10 @@ def download_commons_scenes(script, limit=8):
         picked=False
         searches=[query]
         if len(query.split())>1:
-            searches.append(query.split()[0])
+            # "outer space stars" should broaden to "space", not "outer".
+            generic={"outer","human","historic"}
+            key=next((word for word in query.split() if word not in generic),query.split()[0])
+            searches.append(key)
         for search in searches:
             if picked:
                 break
