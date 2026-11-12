@@ -2,7 +2,7 @@
 import math
 import unittest
 
-from motion_director import walk_pose
+from motion_director import walk_pose, walk_pose_with_translation
 from motion_studio import _background, _draw_frame
 
 
@@ -95,6 +95,92 @@ class WalkGaitTests(unittest.TestCase):
                 for pa, pb in zip(leg_a, leg_b)
             )
             self.assertLess(max_delta, 15)
+
+    def test_stationary_animated_root_preserves_existing_gait(self):
+        # Opt 4 should not alter the already-tested in-place stride from opt 3.
+        for t in (0.0, .08, .21, .49, .65, .91, 1.27):
+            original = walk_pose(t)
+            anchored = walk_pose_with_translation(t, lambda _: 120, scale=.83)
+            self.assertAlmostEqual(original[0], anchored[0], places=6)
+            self.assertAlmostEqual(original[1], anchored[1], places=6)
+            for old_leg, new_leg in zip(original[2], anchored[2]):
+                for old_joint, new_joint in zip(old_leg, new_leg):
+                    for a, b in zip(old_joint, new_joint):
+                        self.assertAlmostEqual(a, b, places=5)
+
+    def test_stance_ankles_are_fixed_in_stage_while_root_translates(self):
+        scale = .83
+        def root_x_at(t):
+            return 20 + 80*t + 6*t*t
+        for side, phases, touchdown in (
+            (1, (0.2, 0.7, 1.7, 2.6), 0.0),
+            (-1, (math.pi+.2, math.pi+.8, math.pi+1.7,
+                  math.tau-.2), math.pi/SPEED),
+        ):
+            for phase in phases:
+                with self.subTest(side=side, phase=phase):
+                    t = phase/SPEED
+                    sway, bob, legs, _ = walk_pose_with_translation(
+                        t, root_x_at, scale=scale)
+                    ankle = legs[0 if side == -1 else 1][2]
+                    stage_x = root_x_at(t) + scale*(sway+ankle[0])
+                    self.assertAlmostEqual(
+                        stage_x, root_x_at(touchdown)+side*34*scale, places=5)
+                    self.assertAlmostEqual(ankle[1]+bob, 159, places=6)
+
+    def test_swing_feet_advance_without_backtracking_for_translating_actor(self):
+        scale = .83
+        root_x_at = lambda t: 25 + 95*t
+        for side, start in ((-1, 0), (1, math.pi)):
+            world_x = []
+            for fraction in (0.01, .2, .5, .8, .99):
+                t = (start+math.pi*fraction)/SPEED
+                sway, _, legs, _ = walk_pose_with_translation(
+                    t, root_x_at, scale=scale)
+                ankle = legs[0 if side == -1 else 1][2]
+                world_x.append(root_x_at(t)+scale*(sway+ankle[0]))
+            self.assertEqual(world_x, sorted(world_x))
+            self.assertGreater(world_x[-1]-world_x[0], 20)
+
+    def test_touchdown_is_continuous_while_root_is_advancing(self):
+        root_x_at = lambda t: 23 + 80*t + 4*t*t
+        epsilon = 0.0001
+        for boundary in (0, math.pi, math.tau, 3*math.pi):
+            with self.subTest(boundary=boundary):
+                frames = []
+                for phase in (boundary-epsilon, boundary+epsilon):
+                    t = phase/SPEED
+                    sway, bob, legs, _ = walk_pose_with_translation(t, root_x_at)
+                    frames.append(tuple(
+                        (root_x_at(t)+sway+leg[2][0], bob+leg[2][1])
+                        for leg in legs
+                    ))
+                for prev, nxt in zip(frames[0], frames[1]):
+                    self.assertAlmostEqual(prev[0], nxt[0], delta=.001)
+                    self.assertAlmostEqual(prev[1], nxt[1], delta=.001)
+
+    def test_approach_actor_pose_is_deterministic_across_shot_cuts(self):
+        # Different local progress values do not change the walking pose
+        # when the absolute time, narrative beat and beat speed match.
+        base = _background((540, 960), "approach")
+        args = dict(shot=0, mouth=0.0, beat_progress=.32,
+                    absolute_seconds=.65, beat_rate=.22)
+        before = _draw_frame((540, 960), "approach", .2, 3, base, **args)
+        after = _draw_frame((540, 960), "approach", .8, 3, base, **args)
+        self.assertEqual(
+            before.crop((0, 300, 540, 950)).tobytes(),
+            after.crop((0, 300, 540, 950)).tobytes()
+        )
+
+    def test_approach_beat_speed_affects_ground_contact_not_root_position(self):
+        base = _background((540, 960), "approach")
+        kw = dict(shot=0, mouth=0, beat_progress=.3, absolute_seconds=.4)
+        slow = _draw_frame((540, 960), "approach", .3, 2, base,
+                           beat_rate=.1, **kw)
+        quick = _draw_frame((540, 960), "approach", .3, 2, base,
+                            beat_rate=.55, **kw)
+        self.assertNotEqual(slow.tobytes(), quick.tobytes())
+        self.assertEqual(slow.getpixel((10, 510)), quick.getpixel((10, 510)))
 
     def test_approach_actually_changes_pose_while_camera_remains_locked(self):
         bg = _background((540, 960), "approach")
