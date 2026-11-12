@@ -151,6 +151,8 @@ def inspect_source_video(path: Path) -> dict:
         raise RuntimeError("Métadonnées vidéo source invalides.") from exc
     if width<480 or height<480:
         raise RuntimeError(f"Clip trop petit ({width}x{height}) : minimum 480 px par dimension.")
+    if width * height > 3840 * 2160:
+        raise RuntimeError(f"Clip trop grand ({width}x{height}) : maximum 8,3 mégapixels (4K).")
     if not math.isfinite(duration) or duration<0.5:
         raise RuntimeError("Clip source trop court ou sans durée détectable.")
     return {"width":width,"height":height,"duration":duration}
