@@ -6,7 +6,7 @@ import streamlit as st
 from video_factory import make_video
 from tiktok_pro import audit_script, production_brief, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
-from local_ai import configured, generate_images
+from local_ai import configured, generate_images, scene_prompts
 from job_store import enqueue, jobs, next_job, finish, retry_failed, recover_interrupted, cancel_queued, update_metrics, set_youtube
 from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes, select_commons_scenes, download_commons_scenes
 
@@ -56,10 +56,11 @@ with tab_create:
         if os.environ.get("PEXELS_API_KEY"):
             modes.append("Vidéos Pexels — vrais clips (recommandé)")
         modes.append("Éco — fonds animés abstraits (démonstration)")
-        if configured(): modes.append("IA locale — Stable Diffusion CPU (lent)")
+        if configured(): modes.append("IA locale — scènes originales (CPU ou AMD Vulkan)")
         if os.environ.get("PEXELS_API_KEY"):
             modes.append("Photos Pexels — recherche automatique")
         mode=st.selectbox("Visuels",modes)
+        ai_backend=st.selectbox("Accélération IA locale",["cpu","vulkan0"],help="Vulkan nécessite un binaire stable-diffusion.cpp compatible avec ta Radeon. Le CPU est plus universel.")
         captions=st.checkbox("Sous-titres synchronisés avec la voix (si timestamps disponibles)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
@@ -69,8 +70,7 @@ with tab_create:
     def visuals():
         if images:return [i.getvalue() for i in images]
         if mode.startswith("IA locale"):
-            sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
-            return generate_images(["cinematic editorial illustration, no text, portrait composition, "+s[:250] for s in sentences[:6]],backend="cpu",steps=12)
+            return generate_images(scene_prompts(script,visual_style,limit=12),backend=ai_backend,steps=12)
         if mode.startswith("Photos"):
             items=search_images(title,limit=4)
             if not items:raise RuntimeError("Aucune photo Pexels trouvée.")
@@ -148,8 +148,7 @@ with tab_queue:
                         pics=[]
                     elif job["mode"].startswith("IA locale"):
                         if not configured():raise RuntimeError("Le moteur IA local n'est pas configuré.")
-                        sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",job["script"]) if s.strip()]
-                        pics=generate_images(["cinematic editorial illustration, no text, portrait, "+s[:250] for s in sentences[:6]],backend="cpu",steps=12)
+                        pics=generate_images(scene_prompts(job["script"],limit=12),backend="cpu",steps=12)
                     elif job["mode"].startswith("Photos"):
                         pics=download_images(search_images(job["title"],limit=4))
                         if not pics:raise RuntimeError("Aucune photo trouvée.")
