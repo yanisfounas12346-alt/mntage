@@ -26,7 +26,7 @@ div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea{back
 .hero{background:linear-gradient(120deg,#1a3444,#111d30);border:1px solid #247e86;border-radius:18px;padding:25px;margin-bottom:20px}
 .hero b{font-size:1.8rem;color:white}.hero small{color:#ffd447;letter-spacing:.12em}.hero p{color:#dce9ee}
 div[data-testid="stWidgetLabel"] p, div[data-testid="stRadio"] label p, div[data-testid="stCheckbox"] label p, div[data-testid="stSelectbox"] label p{color:#f8fafc!important}\n.stCaptionContainer,div[data-testid="stMarkdownContainer"] small{color:#b9d2db!important}\n</style>""",unsafe_allow_html=True)
-st.markdown('<div class="hero"><small>MNTAGE / STUDIO IA</small><br><b>Ton script. Ta vidéo. Un clic.</b><p>Studio local rouge et noir · voix · sous-titres · montage · historique</p></div>',unsafe_allow_html=True)
+st.markdown('<div class="hero"><small>MNTAGE / STUDIO IA</small><br><b>Ton script. Ta vidéo. Un clic.</b><p>Animation 2D originale · HD vertical · sous-titres · montage · historique</p></div>',unsafe_allow_html=True)
 
 tab_create,tab_queue,tab_stats=st.tabs(["🎬 Créer","📂 File & historique","📊 Résultats"])
 with tab_create:
