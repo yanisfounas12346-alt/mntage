@@ -32,6 +32,40 @@ git pull
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
+## Studio Science WTF — pilote animé 2D (miroir)
+
+Dans **Créer**, active **Science WTF**, puis choisis **Studio animé 2D — miroir (gratuit)**.
+Ce mode crée des scènes originales sans images cloud, en conservant le personnage au
+sac jaune et une caméra fixe. Les six compositions alternent : plans avec personnage,
+gros plans du reflet, comparaison **normal / perçu**, observation chronométrée et
+explications visuelles du cerveau. Les plans durent **3,25 secondes maximum**.
+
+- Le bouton **Tester 5 plans animés en 8 secondes** produit un aperçu **silencieux** :
+  la bouche y est simulée pour montrer son animation.
+- Pour le MP4 complet, la bouche suit approximativement le signal sonore de la voix
+  générée et se ferme dans les silences. Il ne s'agit **pas** d'un lip-sync phonétique.
+- Le pilote n'est disponible **que pour le script de l'expérience du miroir** :
+  les autres sujets nécessitent encore leur propre storyboard et leurs animations.
+- Les exports sont en 1080 × 1920 à 25 i/s. Le rendu peut être long sur CPU ;
+  aucune requête IA payante n'est lancée par ce mode.
+
+**Contrôle local Windows** :
+
+```powershell
+cd C:\Users\taver\mntage
+git pull
+.\.venv\Scripts\python.exe -m py_compile app.py video_factory.py motion_studio.py motion_director.py speech_motion.py tiktok_pro.py
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+Le **pack SEO** propose un titre de recherche, une accroche et des hashtags à
+relire. Il est aussi enregistré à côté du MP4 (fichier `.seo.txt`).
+Ces propositions ne sont ni des tendances TikTok vérifiées ni une garantie de vues.
+
+**Statut :** moteur expérimental en cours d'amélioration, pas encore production
+professionnelle validée sur tout un épisode et sur toutes les machines Windows.
+
 ## Option : images IA locales sans GPU cloud
 
 Le moteur [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) est **facultatif**. Le mode Éco fonctionne sans lui. Pour activer le mode IA :
