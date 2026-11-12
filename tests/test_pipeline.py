@@ -475,7 +475,7 @@ class VideoPlanningTests(unittest.TestCase):
             path.write_bytes(b"video")
             metadata={"streams":[{"width":1280,"height":720,"duration":"N/A"}],
                       "format":{"duration":"3.25"}}
-            with patch("video_factory.subprocess.run",return_value=SimpleNamespace(
+            with patch("video_factory.subprocess.run",side_effect=lambda *args, **kwargs: SimpleNamespace(
                     returncode=0,stdout=json.dumps(metadata),stderr="")):
                 self.assertAlmostEqual(inspect_source_video(path)["duration"],3.25)
 
@@ -610,7 +610,7 @@ class VideoPlanningTests(unittest.TestCase):
             video.write_bytes(b"x"*2048)
             probe={"streams":[{"codec_type":"video","width":1080,"height":1920},
                               {"codec_type":"audio"}],"format":{"duration":"12.0"}}
-            with patch("video_factory.subprocess.run",return_value=SimpleNamespace(returncode=0,stdout=json.dumps(probe),stderr="")):
+            with patch("video_factory.subprocess.run",side_effect=lambda *args, **kwargs: SimpleNamespace(returncode=0,stdout=json.dumps(probe),stderr="")):
                 validate_output(video,12.0)
                 with self.assertRaisesRegex(RuntimeError,"Durée incorrecte"):
                     validate_output(video,15.0)
