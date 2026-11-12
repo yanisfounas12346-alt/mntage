@@ -20,6 +20,10 @@ class VideoPlanningTests(unittest.TestCase):
         q=scene_queries("La montagne domine la vallée. Une voiture passe sur la route.\\nUn ordinateur s'allume.",8)
         self.assertEqual(q,["mountain landscape","cars road","computer technology"])
 
+    def test_no_false_keyword_matches(self):
+        self.assertNotEqual(scene_queries("Le premier jour sera difficile.")[0],"ocean waves")
+        self.assertEqual(scene_queries("La mer est calme.")[0],"ocean waves")
+
     def test_unique_clips(self):
         clips=[{"id":1,"url":"a"},{"id":2,"url":"b"}]
         with patch("stock_media.search_videos",return_value=clips):
