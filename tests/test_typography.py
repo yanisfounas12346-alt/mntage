@@ -25,15 +25,14 @@ class TypographyTests(unittest.TestCase):
                 image = Image.new("RGB", dimensions, (13, 23, 38))
                 painter = _Painter(image)
                 painter.text((270, 250), "SCIENCE WTF", size=20)
-                # Verify a real drawing happened, not a missing-font exception.
-                self.assertIsNotNone(image.getbbox())
-                self.assertNotEqual(image.getpixel((0, 0)), image.getpixel(
-                    (dimensions[0] // 2, dimensions[1] // 4)) if False else
-                    self.assertTrue(any(pixel != (13, 23, 38)
-                                        for pixel in image.crop(
-                                            (dimensions[0]//4, dimensions[1]//5,
-                                             3*dimensions[0]//4, dimensions[1]//3)
-                                        ).getdata()))
+                # Verify the label changed pixels inside its expected region.
+                area = image.crop((
+                    dimensions[0] // 4, dimensions[1] // 5,
+                    3 * dimensions[0] // 4, dimensions[1] // 3,
+                ))
+                self.assertTrue(any(
+                    pixel != (13, 23, 38) for pixel in area.getdata()
+                ))
 
 
 if __name__ == "__main__":
