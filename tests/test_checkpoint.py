@@ -127,6 +127,25 @@ class CheckpointTests(unittest.TestCase):
                 encoding="utf-8")
             self.assertIn("Ne commence PAS une nouvelle fonctionnalité", prompt)
 
+    def test_report_records_exact_tested_git_revision(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(gate, "OUT", Path(folder)):
+                with patch.object(gate, "_git_revision", return_value="c"*40):
+                    report_path, _=gate._write_results(
+                        10, [{"step":"tests","ok":True}], True)
+            report=json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["git_revision"],"c"*40)
+            self.assertEqual(report["repository"],str(gate.ROOT))
+
+    def test_revision_detection_rejects_malformed_git_output(self):
+        from subprocess import CompletedProcess
+        with patch.object(gate.subprocess,"run",return_value=CompletedProcess(
+            ["git","rev-parse","HEAD"],0,stdout="not-a-sha\\n",stderr="")):
+            self.assertEqual(gate._git_revision(),"")
+        with patch.object(gate.subprocess,"run",return_value=CompletedProcess(
+            ["git","rev-parse","HEAD"],1,stdout="d"*40,stderr="error")):
+            self.assertEqual(gate._git_revision(),"")
+
     def test_failure_exits_nonzero(self):
         with patch("sys.argv", ["checkpoint.py", "--iteration", "10", "--no-pull"]):
             with patch.object(gate, "checkpoint", return_value=False):

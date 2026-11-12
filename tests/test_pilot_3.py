@@ -90,7 +90,20 @@ class PilotThreeTests(unittest.TestCase):
         path = handoff.gate.OUT / "cycle_0010.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"iteration": 10, "status": "PASS"}), encoding="utf-8")
-        permitted = pilot.prepare()
+        self.assertEqual(pilot.prepare()["status"], "REPAIR")
+        # An actual gate report must match the local completion history, HEAD
+        # and the mandatory successful checks to release the 11th request.
+        report = {
+            "iteration": 10, "status": "PASS",
+            "timestamp_utc": handoff.now(),
+            "repository": str(handoff.gate.ROOT),
+            "git_revision": "a" * 40,
+            "steps": [{"step": name, "ok": True} for name in sorted(
+                handoff._REQUIRED_CHECKPOINT_STEPS)],
+        }
+        path.write_text(json.dumps(report), encoding="utf-8")
+        with patch.object(handoff.gate, "_git_revision", return_value="a"*40):
+            permitted = pilot.prepare()
         self.assertEqual(permitted["status"], "SEND")
         self.assertEqual(permitted["iteration"], 11)
 

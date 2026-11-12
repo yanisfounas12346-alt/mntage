@@ -28,10 +28,10 @@ jobs:
       - name: Run offline regression and real FFmpeg smoke tests
         run: python -m unittest discover -s tests -v
       - name: Run checkpoint 10 of 600 on Linux
-        if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint'
+        if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint' || github.head_ref == 'optimization-011-checkpoint-evidence' || github.ref_name == 'optimization-011-checkpoint-evidence'
         run: python -m tools.checkpoint --iteration 10 --no-pull
       - name: Save checkpoint 10 report (Linux)
-        if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint')
+        if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint' || github.head_ref == 'optimization-011-checkpoint-evidence' || github.ref_name == 'optimization-011-checkpoint-evidence')
         uses: actions/upload-artifact@v4
         with:
           name: checkpoint-0010-linux
@@ -67,12 +67,12 @@ jobs:
         shell: pwsh
         run: .\verify_windows.ps1
       - name: Run checkpoint 10 of 600 on Windows
-        if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint'
+        if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint' || github.head_ref == 'optimization-011-checkpoint-evidence' || github.ref_name == 'optimization-011-checkpoint-evidence'
         shell: pwsh
         run: |
           & .\.venv\Scripts\python.exe -m tools.checkpoint --iteration 10 --no-pull
       - name: Save checkpoint 10 report (Windows)
-        if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint')
+        if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint' || github.head_ref == 'optimization-011-checkpoint-evidence' || github.ref_name == 'optimization-011-checkpoint-evidence')
         uses: actions/upload-artifact@v4
         with:
           name: checkpoint-0010-windows

@@ -91,6 +91,22 @@ def _check_media_tools() -> list[dict]:
     return [ffmpeg, ffprobe, subtitle]
 
 
+
+def _git_revision() -> str:
+    """Best-effort HEAD identifier; empty when not in a usable Git checkout."""
+    try:
+        command = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+            text=True, timeout=10, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    sha = command.stdout.strip().lower()
+    if command.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        return ""
+    return sha
+
+
 def _write_results(iteration: int, steps: list[dict], ok: bool) -> tuple[Path, Path]:
     OUT.mkdir(parents=True, exist_ok=True)
     prefix = f"cycle_{iteration:04d}"
@@ -102,6 +118,7 @@ def _write_results(iteration: int, steps: list[dict], ok: bool) -> tuple[Path, P
         "status": "PASS" if ok else "FAIL",
         "python": sys.version,
         "repository": str(ROOT),
+        "git_revision": _git_revision(),
         "steps": steps,
     }
     report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
