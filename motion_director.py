@@ -177,17 +177,34 @@ def walking_arm_pose(t, side):
     return (shoulder, elbow, wrist)
 
 
+
+def walking_torso_pose(t):
+    """Gentle chest shift toward the planted leg, with counter-rolling shoulders.
+
+    Positive stride means the right foot is planted; negative means left.
+    Values are in the unscaled 540x960 drawing stage. Both channels are
+    deterministic, bounded and continuous across absolute-time shot cuts.
+    """
+    phase = 6.2*t
+    weight = math.sin(phase)
+    chest_shift = 5.0*weight
+    shoulder_roll = 2.4*math.sin(phase + 0.25)
+    return chest_shift, shoulder_roll
+
+
 def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,progress=0.,root_x_at=None):
     """Articulated original character: brows, blinks, four mouth shapes and actions."""
     talk=min(1.,max(0.,mouth))
     shock=1. if feeling=="surprised" else 0.
     x+=(-8 if not mirror else 8)*shock*math.sin(min(1.,progress*2.)*math.pi/2)*s
     walking=action=="walk"
+    chest_shift=shoulder_roll=0.0
     if walking:
         if root_x_at is None:
             sway,bob,walk_legs,stride=walk_pose(t)
         else:
             sway,bob,walk_legs,stride=walk_pose_with_translation(t,root_x_at,scale=s)
+        chest_shift,shoulder_roll=walking_torso_pose(t)
         x+=sway*s
         y+=bob*s
     else:
@@ -225,9 +242,12 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         p.rect((*pt(19,-33),*pt(78,78)),YELLOW,radius=13*s,outline=INK,width=5*s)
         p.line([pt(54,-22),pt(54,24)],(248,229,152),3*s)
         ellipse(49,32,61,44,INK)
-    stroke([(0,-46),(0,67)],INK,23)
-    stroke([(0,-46),(0,67)],WHITE,15)
-    ellipse(-17,-52,17,-26,WHITE,outline=INK,width=4)
+    # Lean the chest over the supporting leg, leaving the pelvis and
+    # lower-body foot anchors untouched.
+    stroke([(chest_shift,-46),(0,67)],INK,23)
+    stroke([(chest_shift,-46),(0,67)],WHITE,15)
+    ellipse(-17+chest_shift,-52,17+chest_shift,-26,
+            WHITE,outline=INK,width=4)
     if action=="point":
         left=[(-6,-20),(-36,-4),(-65,25)]
         right=[(7,-20),(42,-43),(105,-63)]
@@ -238,9 +258,12 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         left=[(-7,-20),(-54,-56),(-70,-92)]
         right=[(7,-20),(50,-67),(78,-111)]
     elif action=="walk":
-        # Opposite, slightly delayed wrist swings and fixed-length arm bones.
-        left=walking_arm_pose(t,-1)
-        right=walking_arm_pose(t,1)
+        # Translate each entire articulated arm with its shoulder. Doing so
+        # preserves the two bone lengths introduced in optimization 8.
+        left=[(px+chest_shift,py-shoulder_roll)
+              for px,py in walking_arm_pose(t,-1)]
+        right=[(px+chest_shift,py+shoulder_roll)
+               for px,py in walking_arm_pose(t,1)]
     else:
         wobble=math.sin(t*4)*(9 if talk>.1 else 3)
         left=[(-6,-20),(-45,-16),(-64,9+wobble)]
@@ -262,7 +285,7 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         stroke(arm,WHITE,11)
         hx,hy=arm[-1]
         ellipse(hx-7,hy-7,hx+7,hy+7,WHITE,outline=INK,width=2)
-    head_x=-3*shock*math.sin(t*3.1)
+    head_x=-3*shock*math.sin(t*3.1)+.75*chest_shift
     head_y=-107-6*shock+2*math.sin(t*2.1)-1.8*talk*math.sin(t*8.5)
     ellipse(head_x-52,head_y-57,head_x+52,head_y+48,WHITE,outline=INK,width=5)
     brows=-12 if shock else -4 if feeling=="curious" else 1
