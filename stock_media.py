@@ -33,17 +33,21 @@ def scene_queries(script,limit=8):
     queries=[]
     for sentence in sentences[:limit]:
         normalized=sentence.casefold()
-        matches=[(normalized.find(word),query) for words,query in topics
-                 for word in words if word in normalized]
+        tokens=re.findall(r"[a-zA-ZÀ-ÿœ]+",normalized)
+        matches=[]
+        for words,query in topics:
+            for keyword in words:
+                # Match whole words and simple plurals; avoid "mer" in "premier".
+                for position,token in enumerate(tokens):
+                    if token==keyword or token==keyword+"s":
+                        matches.append((position,query))
         if matches:
             queries.append(min(matches,key=lambda item:item[0])[1])
         else:
-            words=re.findall(r"[a-zA-ZÀ-ÿ]+",normalized)
-            # Commons indexes French descriptions too: do not invent unrelated stock topics.
             stop={"avec","pour","dans","cette","comme","mais","plus","nous","vous",
                   "elles","sont","être","avoir","cest","tout","tous","leurs","alors",
-                  "cette","notre","votre","cela","depuis","quand","parce","aussi"}
-            keywords=[w for w in words if len(w)>=5 and w not in stop]
+                  "notre","votre","cela","depuis","quand","parce","aussi"}
+            keywords=[w for w in tokens if len(w)>=5 and w not in stop]
             queries.append(" ".join(keywords[:3]) or "nature")
     return queries or ["nature"]
 
