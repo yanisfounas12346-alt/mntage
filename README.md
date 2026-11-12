@@ -96,4 +96,4 @@ Après installation et mise à jour du dépôt, lance dans PowerShell :
 
 Le script vérifie Python, FFmpeg, le filtre ASS, compile les modules et lance les tests hors ligne. Si l'exécution des scripts PowerShell est bloquée, utilise `powershell -ExecutionPolicy Bypass -File .\verify_windows.ps1`. Un résultat vert confirme uniquement les tests exécutés ; il ne remplace pas une génération réelle avec Edge TTS et une recherche Wikimedia Commons connectée à Internet.
 
-**Clips personnels :** tout MP4 ajouté dans « Options avancées » prend la priorité sur la recherche de vidéos automatique. Retire les fichiers importés pour revenir au mode Wikimedia Commons.
+**Visuels personnels :** les clips MP4 importés sont prioritaires, puis les images importées. La recherche automatique n'est utilisée qu'en l'absence de ces fichiers. Retire les fichiers importés pour revenir au mode Wikimedia Commons.
