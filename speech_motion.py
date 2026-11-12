@@ -4,7 +4,6 @@ from array import array
 from dataclasses import dataclass
 import math
 from pathlib import Path
-import struct
 import subprocess
 import sys
 
