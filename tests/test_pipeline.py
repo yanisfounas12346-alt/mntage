@@ -2,12 +2,13 @@
 import tempfile
 import io
 import json
+from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 from stock_media import scene_queries, select_video_scenes, search_commons_videos
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
-from video_factory import scene_durations
+from video_factory import scene_durations, validate_output
 
 class VideoPlanningTests(unittest.TestCase):
     def test_scene_topics(self):
@@ -58,6 +59,20 @@ class VideoPlanningTests(unittest.TestCase):
             results=search_commons_videos("ocean waves",limit=1)
         self.assertEqual(len(results),1)
         self.assertEqual(results[0]["id"],2)
+
+    def test_export_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            video=Path(tmp)/"test.mp4"
+            video.write_bytes(b"x"*2048)
+            probe={"streams":[{"codec_type":"video","width":1080,"height":1920},
+                              {"codec_type":"audio"}],"format":{"duration":"12.0"}}
+            with patch("video_factory.subprocess.run",return_value=SimpleNamespace(returncode=0,stdout=json.dumps(probe),stderr="")):
+                validate_output(video,12.0)
+                with self.assertRaisesRegex(RuntimeError,"Durée incorrecte"):
+                    validate_output(video,15.0)
+                with self.assertRaisesRegex(RuntimeError,"résolution"):
+                    probe["streams"][0]["width"]=540
+                    validate_output(video,12.0)
 
     def test_short_subtitles(self):
         with tempfile.TemporaryDirectory() as tmp:
