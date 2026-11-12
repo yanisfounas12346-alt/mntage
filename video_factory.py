@@ -59,6 +59,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             scene_duration = duration / scene_count
             if video_bytes:
                 source = work / f"source_{idx:03d}.mp4"
+                if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
                 source.write_bytes(data)
                 clip = work / f"clip_{idx:03d}.mp4"
                 # Repeat short source clips if needed, discard their original audio.
