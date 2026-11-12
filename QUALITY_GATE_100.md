@@ -8,7 +8,8 @@ sur la branche principale, #3/600 en revue (CI Linux et Windows réussie),
 et #4/600 proposée sur une branche dépendant de #3 ;
 #5/600 non documentée, #6/600 en revue (CI Linux et Windows réussie),
 #7/600 en revue (CI Linux/Windows réussie),
-#8/600 proposée sur une branche dépendant de #7 ;
+#8/600 en revue (CI Linux/Windows réussie),
+#9/600 proposée sur une branche dépendant de #8 ;
 **contrôle visuel Windows des vidéos à effectuer** : statuts partiels.
 Le compteur persistant du PC reste indépendant et ne s'incrémente qu'après
 confirmation via `tools/session_handoff.py`. Les anciens échanges ne sont pas
@@ -37,7 +38,8 @@ reconstitués artificiellement.
 | 4 | 2026-11-12 | Le pied posé se déplace avec la translation du personnage dans le décor | `f45002c`, `e432ea4`, `083e764` (branche `optimization-004-world-foot-plant`, dépend de #3) | CI Linux/Windows : 142 tests réussis ; **validation visuelle locale en attente** | Partielle |
 | 6 | 2026-11-12 | Flexions des genoux géométriquement incohérentes pendant la marche | `d528cad`, `97d506e` (branche `optimization-006-two-bone-knees`, dépend de #4) | CI Linux/Windows : 147 tests réussis ; **contrôle visuel local à confirmer** | Partielle |
 | 7 | 2026-11-12 | Chaussures trop rigides et horizontales pendant la phase aérienne du pas | `2a7b67b`, `a651a2c` (branche `optimization-007-ankle-foot-roll`, dépend de #6) | 152 tests passés sur Linux et Windows ; **validation visuelle à confirmer** | Partielle |
-| 8 | 2026-11-12 | Balancement des bras raide avec longueur variable des segments | `1549cbb`, `b876e4e` (branche `optimization-008-articulated-arm-swing`, dépend de #7) | Cinématique des deux bras à longueurs fixes, mouvement opposé et décalage de phase ; 7 tests ciblés ; **CI et validation visuelle à confirmer** | Partielle |
+| 8 | 2026-11-12 | Balancement des bras raide avec longueur variable des segments | `1549cbb`, `b876e4e` (branche `optimization-008-articulated-arm-swing`, dépend de #7) | 159 tests réussis sur Linux et Windows ; **validation visuelle locale à confirmer** | Partielle |
+| 9 | 2026-11-12 | Buste et épaules trop figés pendant le transfert du poids dans la marche | `a0a829f`, `98cf011` (branche `optimization-009-torso-weight-transfer`, dépend de #8) | Inclinaison discrète du thorax vers le pied en appui, roulis des épaules, suivi du visage ; 7 tests de géométrie et pixels ; **CI et vidéo Windows à confirmer** | Partielle |
 
 ## État de référence au démarrage (à vérifier, pas un score de performance)
 
