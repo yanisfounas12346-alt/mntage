@@ -186,10 +186,27 @@ def search_commons_videos(query, limit=6):
                       "credit":meta.get("Artist",{}).get("value",""),
                       "license":license_name,"title":page.get("title","")})
     terms=[w for w in re.findall(r"[a-z0-9]+",query.casefold()) if len(w)>2]
+    # Small curated vocabulary: improve English filename matching without paid APIs.
+    synonyms={
+        "ocean":{"sea","seas","marine","water","waves"},
+        "waves":{"surf","ocean","sea","wave"},
+        "forest":{"woods","woodland","trees","jungle"},
+        "trees":{"woodland","forest","tree"},
+        "mountain":{"mountains","alps","peak","peaks","summit"},
+        "cars":{"car","vehicle","vehicles","automobile","traffic"},
+        "road":{"highway","street","streets","roads"},
+        "city":{"urban","town","buildings","street"},
+        "space":{"cosmos","galaxy","stars","planet"},
+        "stars":{"star","night","galaxy"},
+        "rain":{"rainfall","storm","raining"},
+        "computer":{"laptop","pc","technology","keyboard"},
+        "wildlife":{"animals","animal","nature"},
+    }
     def score(item):
         title_tokens=set(re.findall(r"[a-z0-9]+",item["title"].casefold()))
-        return sum(1 for term in terms if term in title_tokens or term+"s" in title_tokens)
-    # Avoid accepting a random licensed clip just because it appeared in search.
+        return sum(1 for term in terms
+                   if title_tokens.intersection({term,term+"s"}|synonyms.get(term,set())))
+    # Require evidence of topical relevance, but accept curated synonyms.
     found=[item for item in found if score(item)>0] if terms else found
     found.sort(key=lambda item:(-score(item),info_size_score(item["title"]),item["title"]))
     return found[:limit]
