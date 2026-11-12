@@ -59,14 +59,14 @@ with tab_create:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
                     if mode.startswith("Vidéos"):
-                        queries=scene_queries(script,limit=5)
+                        queries=scene_queries(script,limit=8)
                         found=[]
                         for query in queries:
                             matches=search_videos(query,limit=2)
                             if matches:found.append(matches[0])
                         if not found:raise RuntimeError("Aucun clip trouvé. Essaie le mode Éco ou reformule ton script.")
                         clips=download_videos(found)
-                        st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
+                        st.caption("Sources des clips : "+", ".join(item["page"] for item in found))\n                        st.info("Montage automatique avec de vrais clips ; vérifie que chaque plan illustre correctement ton texte.")
                     path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips)
                 st.session_state["last_video"]=str(path)
                 st.success("Vidéo prête. Vérifie les images et les droits avant publication.")
@@ -94,7 +94,7 @@ with tab_queue:
                     clips=None
                     if job["mode"].startswith("Vidéos"):
                         found=[]
-                        for query in scene_queries(job["script"],limit=5):
+                        for query in scene_queries(job["script"],limit=8):
                             matches=search_videos(query,limit=2)
                             if matches:found.append(matches[0])
                         if not found:raise RuntimeError("Aucun clip trouvé.")
