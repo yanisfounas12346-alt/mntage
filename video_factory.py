@@ -197,7 +197,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                         validate_image_dimensions(*source_image.size)
                         # Detect malformed/truncated image payloads before paid-in-time TTS.
                         source_image.verify()
-            except (OSError, Image.DecompressionBombWarning, Image.DecompressionBombError) as exc:
+            except (OSError, SyntaxError, ValueError, Image.DecompressionBombWarning, Image.DecompressionBombError) as exc:
                 raise ValueError(f"Image {idx} invalide ou trop grande.") from exc
     OUT.mkdir(exist_ok=True)
     output = OUT / f"{slugify(title)}-{uuid4().hex[:8]}.mp4"
