@@ -131,6 +131,17 @@ class QueueNarrationTests(unittest.TestCase):
                 self.assertIn("voice_rate",columns)
 
 class VideoPlanningTests(unittest.TestCase):
+    def test_specific_ocean_animals_take_priority_over_generic_sea(self):
+        self.assertEqual(
+            scene_queries("Dans les océans, les dauphins nagent avec les baleines.")[0],
+            "dolphins swimming")
+        self.assertEqual(
+            scene_queries("Les profondeurs des océans restent mystérieuses.")[0],
+            "deep sea underwater")
+        self.assertEqual(
+            scene_queries("Les baleines traversent les océans.")[0],
+            "whales underwater")
+
     def test_pexels_avoids_oversized_files(self):
         payload={"videos":[{"id":7,"video_files":[
             {"file_type":"video/mp4","link":"https://example.org/huge.mp4",
