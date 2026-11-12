@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from uuid import uuid4
 from pathlib import Path
 from io import BytesIO
 import edge_tts
@@ -98,14 +99,13 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
     if len(image_bytes) > 24 or len(video_bytes or []) > 24:
         raise ValueError("Maximum 24 images pour protéger les ressources du PC.")
     OUT.mkdir(exist_ok=True)
-    output = OUT / f"{slugify(title)}.mp4"
+    output = OUT / f"{slugify(title)}-{uuid4().hex[:8]}.mp4"
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         audio = work / "voice.mp3"
         boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
         duration = duration_seconds(audio)
         count = len(video_bytes) if video_bytes else len(image_bytes)
-        per_image = duration / count
         durations = scene_durations(duration,boundaries,count) if video_bytes else [duration/count]*count
         scene_count = len(durations)
         clips = []
@@ -123,7 +123,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 clip = work / f"clip_{idx:03d}.mp4"
                 # Repeat short source clips if needed, discard their original audio.
                 _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
-                      "-t",str(scene_duration+0.08),"-an","-vf",
+                      "-t",str(scene_duration),"-an","-vf",
                       "fps=25,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,format=yuv420p",
                       "-c:v","libx264","-preset","veryfast","-crf","23",str(clip)])
                 clips.append(clip)
@@ -183,6 +183,6 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             if result.returncode:
                 raise RuntimeError("FFmpeg (sous-titres/musique) : "+result.stderr[-1400:])
         if captions:
-            shutil.copy2(work / "captions.srt", OUT / f"{slugify(title)}.srt")
+            shutil.copy2(work / "captions.srt", output.with_suffix(".srt"))
     validate_output(output, duration)
     return output
