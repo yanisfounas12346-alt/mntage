@@ -85,6 +85,19 @@ class VideoPlanningTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,"trop court"):
                     inspect_source_video(path)
 
+    def test_commons_retries_corrupt_clip(self):
+        options=[
+            {"id":1,"url":"https://example.org/corrupt.webm"},
+            {"id":2,"url":"https://example.org/valid.webm"}]
+        with patch("stock_media.scene_queries",return_value=["forest trees"]), \
+             patch("stock_media.search_commons_videos",return_value=options), \
+             patch("stock_media._download",return_value=b"video"), \
+             patch("stock_media._valid_video_payload",side_effect=[False,True]):
+            found,clips,missing=download_commons_scenes("Une forêt.",limit=1)
+        self.assertEqual(found[0]["id"],2)
+        self.assertEqual(len(clips),1)
+        self.assertEqual(missing,[])
+
     def test_commons_retries_failed_clip(self):
         options=[
             {"id":1,"url":"https://example.org/broken.webm"},
@@ -95,7 +108,8 @@ class VideoPlanningTests(unittest.TestCase):
             return b"valid-video"
         with patch("stock_media.scene_queries",return_value=["forest trees"]), \
              patch("stock_media.search_commons_videos",return_value=options), \
-             patch("stock_media._download",side_effect=fetch):
+             patch("stock_media._download",side_effect=fetch), \
+             patch("stock_media._valid_video_payload",return_value=True):
             found,clips,missing=download_commons_scenes("Une forêt.",limit=1)
         self.assertEqual(found[0]["id"],2)
         self.assertEqual(clips,[b"valid-video"])
