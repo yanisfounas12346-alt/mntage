@@ -41,7 +41,7 @@ with tab_create:
         if os.environ.get("PEXELS_API_KEY"):
             modes.append("Photos Pexels — recherche automatique")
         mode=st.selectbox("Visuels",modes)
-        captions=st.checkbox("Sous-titres incrustés (timing estimé)",value=True)
+        captions=st.checkbox("Sous-titres synchronisés avec la voix (si timestamps disponibles)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
         user_clips=st.file_uploader("Mes clips vidéo MP4 (plusieurs plans)",type=["mp4"],accept_multiple_files=True,help="Importe plusieurs vidéos dont tu as les droits. Aucun compte ni clé API nécessaire.")
@@ -68,6 +68,7 @@ with tab_create:
                         found,missing=select_commons_scenes(script,limit=8)
                         if missing:st.warning("Scènes non illustrées : "+", ".join(missing))
                         clips=download_videos(found)
+                        st.session_state["commons_sources"]=found
                         st.info("Vidéos Wikimedia Commons : vérifie les plans et conserve les crédits de chaque auteur.")
                         st.code("\n".join(f"{item['title']} | {item['license']} | {item['page']}" for item in found))
                     elif mode.startswith("Mes clips"):
@@ -80,6 +81,9 @@ with tab_create:
                         st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
                         st.info("Montage automatique avec de vrais clips ; vérifie que chaque plan illustre correctement ton texte.")
                     path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips)
+                    if mode.startswith("Auto"):
+                        sources=st.session_state.get("commons_sources",[])
+                        path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | {x['license']} | {x['page']}" for x in sources),encoding="utf-8")
                 st.session_state["last_video"]=str(path)
                 st.success("Vidéo prête. Vérifie les images et les droits avant publication.")
             except Exception as exc:st.error(f"Erreur : {exc}")
