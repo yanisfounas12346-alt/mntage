@@ -120,7 +120,10 @@ def inspect_source_video(path: Path) -> dict:
         data=json.loads(result.stdout)
         video=data.get("streams",[])[0]
         width,height=int(video["width"]),int(video["height"])
-        duration=float(video.get("duration") or data.get("format",{}).get("duration") or 0)
+        raw_duration=video.get("duration")
+        if raw_duration in (None,"","N/A"):
+            raw_duration=data.get("format",{}).get("duration",0)
+        duration=float(raw_duration)
     except (ValueError,TypeError,KeyError,IndexError) as exc:
         raise RuntimeError("Métadonnées vidéo source invalides.") from exc
     if width<480 or height<480:
