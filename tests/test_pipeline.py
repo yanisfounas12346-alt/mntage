@@ -97,6 +97,12 @@ class VideoPlanningTests(unittest.TestCase):
         q=scene_queries("La montagne domine la vallée. Une voiture passe sur la route.\nUn ordinateur s'allume.",8)
         self.assertEqual(q,["mountain landscape","cars road","computer technology"])
 
+    def test_irregular_french_plurals_select_animal_footage(self):
+        self.assertEqual(scene_queries("Les animaux traversent la plaine.")[0],
+                         "wildlife animals")
+        self.assertEqual(scene_queries("Des chevaux courent dans les champs.")[0],
+                         "wildlife animals")
+
     def test_no_false_keyword_matches(self):
         self.assertNotEqual(scene_queries("Le premier jour sera difficile.")[0],"ocean waves")
         self.assertEqual(scene_queries("La mer est calme.")[0],"ocean waves")
