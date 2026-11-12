@@ -74,6 +74,8 @@ def _download(url,max_bytes):
         "User-Agent":"mntage/1.0 (https://github.com/yanisfounas12346-alt/mntage)"})
     with urlopen(request,timeout=45) as response:
         final_url=response.geturl() if hasattr(response,"geturl") else url
+        if not isinstance(final_url,str):
+            raise RuntimeError("URL finale du média invalide.")
         redirected=urlparse(final_url)
         if redirected.scheme!="https" or not redirected.hostname:
             raise RuntimeError("Redirection média non sécurisée : HTTPS requis.")
