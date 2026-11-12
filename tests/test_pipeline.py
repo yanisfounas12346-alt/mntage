@@ -644,3 +644,24 @@ class VideoPlanningTests(unittest.TestCase):
             self.assertIn("Un deux trois quatre",srt.read_text(encoding="utf-8"))
             self.assertIn("Style: Caption",ass.read_text(encoding="utf-8-sig"))
 if __name__=="__main__":unittest.main()
+
+class TikTokProPlanningTests(unittest.TestCase):
+    def test_duration_target_and_keyword(self):
+        from tiktok_pro import audit_script
+        script="Océan " * 180
+        result=audit_script(script,"océan")
+        self.assertTrue(result["duration_ok"])
+        self.assertTrue(result["keyword_in_script"])
+        self.assertEqual(result["words"],180)
+
+    def test_short_script_is_flagged(self):
+        from tiktok_pro import audit_script
+        self.assertFalse(audit_script("Bonjour le monde.","océan")["duration_ok"])
+
+    def test_brief_is_offline_and_budgeted(self):
+        from tiktok_pro import production_brief
+        brief=production_brief("Les abysses","océan")
+        self.assertIn("30 EUR/mois",brief)
+        self.assertIn("océan",brief)
+        with self.assertRaises(ValueError):
+            production_brief("","océan")
