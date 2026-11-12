@@ -116,22 +116,30 @@ def search_commons_videos(query, limit=6):
     with urlopen(Request(url,headers={"User-Agent":"mntage/1.0 (educational video creator; contact via GitHub)"}),timeout=25) as response:
         data=json.load(response)
     allowed={"cc0","cc0 1.0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0","cc by 4.0","cc by 3.0","cc by 2.0"}
+    allowed={"cc0","cc0 1.0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0","cc by 4.0","cc by 3.0","cc by 2.0"}
     found=[]
     for page in data.get("query",{}).get("pages",{}).values():
         info=(page.get("imageinfo") or [{}])[0]
-        mime=info.get("mime","")
-        if mime not in {"video/webm","video/ogg","video/mp4"}:continue
-        if not 0<info.get("size",0)<=55*1024*1024:continue
+        if info.get("mime") not in {"video/webm","video/ogg","video/mp4"}:
+            continue
+        if not 0 < info.get("size",0) <= 55*1024*1024:
+            continue
         meta=info.get("extmetadata",{})
         license_name=meta.get("LicenseShortName",{}).get("value","").strip().lower()
-        if license_name not in allowed:continue
-        if not info.get("url"):continue
+        if license_name not in allowed or not info.get("url"):
+            continue
         found.append({"id":page.get("pageid"),"url":info["url"],
-                      "page":info.get("descriptionurl",""),"credit":meta.get("Artist",{}).get("value",""),
+                      "page":info.get("descriptionurl",""),
+                      "credit":meta.get("Artist",{}).get("value",""),
                       "license":license_name,"title":page.get("title","")})
-        if len(found)>=limit:break
-    found.sort(key=lambda item: (-sum(w in item["title"].lower() for w in query.lower().split()), item["title"]))
-    return found
+    terms=[w for w in query.lower().split() if len(w)>2]
+    found.sort(key=lambda item: (-sum(w in item["title"].lower() for w in terms),
+                                  info_size_score(item["title"]),item["title"]))
+    return found[:limit]
+
+def info_size_score(title):
+    """Prefer descriptively titled clips over anonymous file names."""
+    return 1 if len(title)<15 else 0
 
 def select_commons_scenes(script,limit=8):
     """Select distinct licensed footage; never silently substitute unrelated visuals."""
