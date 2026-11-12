@@ -23,6 +23,28 @@ class SessionHandoffTests(unittest.TestCase):
         self.addCleanup(self._gate_patch.stop)
         self.addCleanup(self._handoff_patch.stop)
 
+    @staticmethod
+    def complete_checkpoint_report(state, *, revision="a"*40):
+        return {
+            "iteration": state["completed"],
+            "timestamp_utc": handoff.now(),
+            "repository": str(handoff.gate.ROOT),
+            "git_revision": revision,
+            "status": "PASS",
+            "steps": [{"step": name, "ok": True} for name in sorted(
+                handoff._REQUIRED_CHECKPOINT_STEPS)],
+        }
+
+    def state_after_tenth_request(self):
+        state=handoff.initial()
+        state["completed"]=9
+        handoff.save(state)
+        pending=handoff.begin(state)
+        handoff.complete(state,pending["request_id"],
+                         "Dixième amélioration documentée")
+        self.assertEqual(state["completed"],10)
+        return state
+
     def test_persists_counter_and_does_not_send_pending_twice(self):
         s=handoff.initial()
         first=handoff.begin(s)
@@ -78,21 +100,81 @@ class SessionHandoffTests(unittest.TestCase):
         self.assertEqual(handoff.load()["completed"],0)
 
     def test_tenth_request_blocks_until_successful_checkpoint(self):
-        s=handoff.initial()
-        s["completed"]=9
-        handoff.save(s)
-        action=handoff.begin(s)
-        handoff.complete(s,action["request_id"],"Neuvième correction terminée")
-        self.assertEqual(s["completed"],10)
+        s=self.state_after_tenth_request()
         self.assertEqual(handoff.begin(s)["status"],"CHECKPOINT_REQUIRED")
         path=handoff.gate.OUT/"cycle_0010.json"
         path.parent.mkdir(parents=True,exist_ok=True)
         path.write_text(json.dumps({"iteration":10,"status":"FAIL"}),encoding="utf-8")
         self.assertEqual(handoff.begin(s)["status"],"REPAIR")
+        # A bare PASS is not evidence of a real checkpoint.
         path.write_text(json.dumps({"iteration":10,"status":"PASS"}),encoding="utf-8")
-        next_action=handoff.begin(s)
+        self.assertEqual(handoff.begin(s)["status"],"REPAIR")
+        path.write_text(json.dumps(self.complete_checkpoint_report(s)),
+                        encoding="utf-8")
+        with patch.object(handoff.gate,"_git_revision",return_value="a"*40):
+            next_action=handoff.begin(s)
         self.assertEqual(next_action["status"],"SEND")
         self.assertEqual(next_action["iteration"],11)
+
+    def test_old_or_foreign_checkpoint_report_cannot_unlock_new_request(self):
+        state=self.state_after_tenth_request()
+        path=handoff.gate.OUT/"cycle_0010.json"
+        path.parent.mkdir(parents=True,exist_ok=True)
+        baseline=self.complete_checkpoint_report(state)
+        with patch.object(handoff.gate,"_git_revision",return_value="a"*40):
+            for changes in (
+                {"timestamp_utc":"2000-01-01T00:00:00+00:00"},
+                {"repository":"/github/runner/not-this-pc"},
+                {"git_revision":"b"*40},
+                {"status":"FAIL"},
+            ):
+                with self.subTest(changes=changes):
+                    report={**baseline, **changes}
+                    path.write_text(json.dumps(report),encoding="utf-8")
+                    self.assertEqual(handoff.begin(state)["status"],"REPAIR")
+                    self.assertEqual(state["completed"],10)
+
+    def test_incomplete_or_failed_checkpoint_steps_block_new_request(self):
+        state=self.state_after_tenth_request()
+        path=handoff.gate.OUT/"cycle_0010.json"
+        path.parent.mkdir(parents=True,exist_ok=True)
+        baseline=self.complete_checkpoint_report(state)
+        cases=(
+            [],
+            [{"step":"tests unitaires et de non-régression","ok":True}],
+            [{**entry,"ok":False if entry["step"]=="FFprobe exécutable" else True}
+             for entry in baseline["steps"]],
+        )
+        with patch.object(handoff.gate,"_git_revision",return_value="a"*40):
+            for steps in cases:
+                with self.subTest(steps=steps):
+                    path.write_text(json.dumps({**baseline,"steps":steps}),
+                                    encoding="utf-8")
+                    self.assertEqual(handoff.begin(state)["status"],"REPAIR")
+                    self.assertEqual(state["completed"],10)
+
+    def test_invalid_report_never_reuses_an_old_success_prompt(self):
+        state=self.state_after_tenth_request()
+        out=handoff.gate.OUT
+        out.mkdir(parents=True,exist_ok=True)
+        (out/"cycle_0010.json").write_text(
+            json.dumps({"iteration":10,"status":"PASS"}),encoding="utf-8")
+        (out/"cycle_0010_next_prompt.txt").write_text(
+            "TOUS LES TESTS ONT REUSSI",encoding="utf-8")
+        result=handoff.begin(state)
+        self.assertEqual(result["status"],"REPAIR")
+        self.assertIn("preuve du checkpoint",result["prompt"])
+        self.assertNotIn("TOUS LES TESTS",result["prompt"])
+
+    def test_checkpoint_report_requires_confirmed_local_history(self):
+        state=self.state_after_tenth_request()
+        state["history"]=[]
+        report=self.complete_checkpoint_report(state)
+        path=handoff.gate.OUT/"cycle_0010.json"
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_text(json.dumps(report),encoding="utf-8")
+        with patch.object(handoff.gate,"_git_revision",return_value="a"*40):
+            self.assertEqual(handoff.gate_status(10,state),"FAIL")
 
     def test_repair_cannot_be_counted_as_optimization(self):
         s=handoff.initial()
