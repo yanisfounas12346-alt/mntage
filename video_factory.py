@@ -267,7 +267,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             for idx in range(scene_count):
                 if motion_mode:
                     clip = work / f"clip_{idx:03d}.mp4"
-                    render_motion_scene(clip, motion_scenes[idx])
+                    render_motion_scene(clip, motion_scenes[idx], boundaries=boundaries)
                     clips.append(clip)
                     continue
                 source_index = scene_source_index(idx, scene_count, count) if dynamic else idx % count
