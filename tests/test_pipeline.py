@@ -11,6 +11,34 @@ from stock_media import scene_queries, select_video_scenes, search_commons_video
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds, validate_image_dimensions
 
+class QueueNarrationTests(unittest.TestCase):
+    def test_voice_rate_saved_and_read_from_queue(self):
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(job_store,"DB",Path(tmp)/"queue.sqlite3"):
+            job_id=job_store.enqueue("Titre","Bonjour","Éco","fr-FR-DeniseNeural",True,"+10%")
+            job=job_store.next_job()
+            self.assertEqual(job["id"],job_id)
+            self.assertEqual(job["voice_rate"],"+10%")
+
+    def test_existing_database_gets_voice_rate_default(self):
+        import sqlite3
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp:
+            db=Path(tmp)/"old.sqlite3"
+            with sqlite3.connect(db) as con:
+                con.execute("""CREATE TABLE jobs (
+                    id INTEGER PRIMARY KEY, created TEXT NOT NULL, title TEXT NOT NULL,
+                    script TEXT NOT NULL, mode TEXT NOT NULL, voice TEXT NOT NULL,
+                    captions INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'queued',
+                    video TEXT, error TEXT, views INTEGER NOT NULL DEFAULT 0,
+                    revenue REAL NOT NULL DEFAULT 0, costs REAL NOT NULL DEFAULT 0,
+                    youtube_url TEXT)""")
+            with patch.object(job_store,"DB",db):
+                with job_store.connect() as con:
+                    columns=[row[1] for row in con.execute("PRAGMA table_info(jobs)")]
+                self.assertIn("voice_rate",columns)
+
 class VideoPlanningTests(unittest.TestCase):
     def test_pexels_avoids_oversized_files(self):
         payload={"videos":[{"id":7,"video_files":[
