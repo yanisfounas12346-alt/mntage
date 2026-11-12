@@ -17,13 +17,17 @@ def connect():
       views INTEGER NOT NULL DEFAULT 0, revenue REAL NOT NULL DEFAULT 0,
       costs REAL NOT NULL DEFAULT 0, youtube_url TEXT
     )""")
+    # Existing local queues predate the narration speed setting.
+    columns={row[1] for row in con.execute("PRAGMA table_info(jobs)")}
+    if "voice_rate" not in columns:
+        con.execute("ALTER TABLE jobs ADD COLUMN voice_rate TEXT NOT NULL DEFAULT '-5%'")
     con.commit()
     return con
 
-def enqueue(title, script, mode, voice, captions):
+def enqueue(title, script, mode, voice, captions, voice_rate="-5%"):
     with connect() as con:
-        cur = con.execute("INSERT INTO jobs(created,title,script,mode,voice,captions,status) VALUES(?,?,?,?,?,?,'queued')",
-                          (datetime.now(timezone.utc).isoformat(timespec="seconds"),title,script,mode,voice,int(captions)))
+        cur = con.execute("INSERT INTO jobs(created,title,script,mode,voice,captions,voice_rate,status) VALUES(?,?,?,?,?,?,?,'queued')",
+                          (datetime.now(timezone.utc).isoformat(timespec="seconds"),title,script,mode,voice,int(captions),voice_rate))
         return cur.lastrowid
 
 def jobs(limit=100):
