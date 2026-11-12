@@ -78,6 +78,7 @@ with tab_create:
         if mode.startswith("IA cloud") or (science_mode and science_source.startswith("Premium")):
             st.caption(f"Coût prévisionnel avec marge : {estimate_eur(cloud_count):.4f} € ; réservé ce mois : {spent_eur():.4f} €. Prix et taux de change à vérifier chez fal.")
             cloud_approval=st.checkbox("J'autorise cet appel payant à fal.ai pour les images de cette vidéo.",value=False)
+        dynamic_edit=st.checkbox("⚡ Montage dynamique — personnage animé et coupes rapides",value=science_mode,help="Décor stable, personnage animé localement, sans coût IA supplémentaire.")
         captions=st.checkbox("Sous-titres synchronisés avec la voix (si timestamps disponibles)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
