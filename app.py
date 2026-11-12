@@ -6,7 +6,7 @@ import streamlit as st
 from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
-from job_store import enqueue, jobs, next_job, finish, update_metrics, set_youtube
+from job_store import enqueue, jobs, next_job, finish, retry_failed, update_metrics, set_youtube
 from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes, select_commons_scenes, download_commons_scenes
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
@@ -148,6 +148,13 @@ with tab_queue:
         with st.expander(f"#{job['id']} · {job['title']} · {job['status']}"):
             st.caption(job["created"])
             if job["error"]:st.error(job["error"])
+            if job["status"]=="failed":
+                if st.button("🔄 Réessayer cette vidéo",key=f"retry_{job['id']}"):
+                    if retry_failed(job["id"]):
+                        st.success("Vidéo remise dans la file d'attente.")
+                        st.rerun()
+                    else:
+                        st.warning("Cette tâche n'est plus en échec.")
             path=Path(job["video"]) if job["video"] else None
             if path and path.is_file():
                 st.video(str(path))
