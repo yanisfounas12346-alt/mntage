@@ -66,9 +66,12 @@ with tab_create:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
                     if user_clips:
-                        # Uploaded footage takes priority over automatic stock search.
+                        # Explicit uploads override automatic stock discovery.
                         clips=[file.getvalue() for file in user_clips]
                         st.info("Clips personnels sélectionnés : recherche automatique ignorée.")
+                    elif images:
+                        # The visuals() helper reads the uploaded images directly.
+                        st.info("Images personnelles sélectionnées : recherche automatique ignorée.")
                     elif mode.startswith("Auto"):
                         found,clips,missing=download_commons_scenes(script,limit=8)
                         if missing:st.warning("Scènes non illustrées : "+", ".join(missing))
@@ -84,7 +87,7 @@ with tab_create:
                         st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
                         st.info("Montage automatique avec de vrais clips ; vérifie que chaque plan illustre correctement ton texte.")
                     path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips)
-                    if mode.startswith("Auto") and not user_clips:
+                    if mode.startswith("Auto") and not user_clips and not images:
                         sources=st.session_state.get("commons_sources",[])
                         path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}" for x in sources),encoding="utf-8")
                 st.session_state["last_video"]=str(path)
