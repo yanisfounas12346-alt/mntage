@@ -12,6 +12,7 @@ import edge_tts
 from PIL import Image, ImageOps
 from subtitles import write_srt, write_ass, write_timed_srt, write_timed_ass
 from motion_studio import plan_mirror_scenes, render_motion_scene, is_mirror_subject
+from speech_motion import analyze_speech_audio
 
 WIDTH, HEIGHT = 1080, 1920
 OUT = Path("outputs").resolve()
@@ -257,6 +258,11 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             if motion_mode:
                 motion_scenes = plan_mirror_scenes(script, duration, boundaries)
                 durations = [scene.end-scene.start for scene in motion_scenes]
+                # Motion uses the existing narration waveform, never resynthesizes speech.
+                try:
+                    speech_motion = analyze_speech_audio(audio)
+                except RuntimeError:
+                    speech_motion = None  # fall back to word timestamps
                 count = 0
             else:
                 motion_scenes = []
@@ -267,7 +273,8 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             for idx in range(scene_count):
                 if motion_mode:
                     clip = work / f"clip_{idx:03d}.mp4"
-                    render_motion_scene(clip, motion_scenes[idx], boundaries=boundaries)
+                    render_motion_scene(clip, motion_scenes[idx], boundaries=boundaries,
+                                        speech_motion=speech_motion)
                     clips.append(clip)
                     continue
                 source_index = scene_source_index(idx, scene_count, count) if dynamic else idx % count
