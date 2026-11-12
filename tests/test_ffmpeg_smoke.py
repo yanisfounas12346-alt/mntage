@@ -5,13 +5,42 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from video_factory import inspect_source_video, validate_output
+from video_factory import inspect_source_video, validate_output, make_video
+from unittest.mock import patch
 from subtitles import write_ass
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                      "FFmpeg and ffprobe not installed")
 class FFmpegSmokeTests(unittest.TestCase):
+    def test_full_pipeline_with_offline_voice(self):
+        """Exercise make_video end-to-end without network or Edge TTS."""
+        async def fake_synthesize(script, destination, voice, rate):
+            cmd=["ffmpeg","-hide_banner","-loglevel","error","-y",
+                 "-f","lavfi","-i","sine=frequency=440:sample_rate=44100:duration=2",
+                 "-c:a","libmp3lame",str(destination)]
+            result=subprocess.run(cmd,capture_output=True,text=True,timeout=30)
+            if result.returncode:
+                raise RuntimeError(result.stderr[-1000:])
+            return [{"text":"Bonjour","offset":0,"duration":9000000},
+                    {"text":"monde","offset":10000000,"duration":9000000}]
+        with tempfile.TemporaryDirectory() as tmp:
+            work=Path(tmp)
+            source=work/"source.mp4"
+            cmd=["ffmpeg","-hide_banner","-loglevel","error","-y",
+                 "-f","lavfi","-i","color=c=blue:s=640x640:r=25:d=2",
+                 "-c:v","libx264","-preset","ultrafast","-crf","30",str(source)]
+            result=subprocess.run(cmd,capture_output=True,text=True,timeout=60)
+            self.assertEqual(result.returncode,0,result.stderr[-1000:])
+            with patch("video_factory.OUT",work), \
+                 patch("video_factory.synthesize",side_effect=fake_synthesize):
+                output=make_video("offline-test","Bonjour monde",[],
+                                  video_bytes=[source.read_bytes()],captions=True)
+            self.assertTrue(output.is_file())
+            self.assertTrue(output.with_suffix(".srt").is_file())
+            self.assertIn("Bonjour monde",output.with_suffix(".srt").read_text(encoding="utf-8"))
+            validate_output(output,2.0)
+
     def test_burned_in_subtitles_with_audio(self):
         with tempfile.TemporaryDirectory() as tmp:
             work=Path(tmp)
