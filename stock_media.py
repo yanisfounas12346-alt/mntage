@@ -90,7 +90,17 @@ def download_images(items):
     return [_download(i["url"],8*1024*1024) for i in items]
 
 def download_videos(items):
-    return [_download(i["url"],55*1024*1024) for i in items]
+    """Bound total footage memory to the 300 MB render limit."""
+    total=0
+    result=[]
+    for item in items:
+        remaining=300*1024*1024-total
+        if remaining<=0:
+            raise RuntimeError("Limite de 300 Mo de clips atteinte.")
+        data=_download(item["url"],min(35*1024*1024,remaining))
+        total+=len(data)
+        result.append(data)
+    return result
 
 def select_video_scenes(script, limit=8):
     """Prefer distinct source videos; fail visibly instead of substituting abstract backgrounds."""
@@ -165,7 +175,7 @@ def search_commons_videos(query, limit=6):
         info=(page.get("imageinfo") or [{}])[0]
         if info.get("mime") not in {"video/webm","video/ogg","video/mp4"}:
             continue
-        if not 0 < info.get("size",0) <= 55*1024*1024:
+        if not 0 < info.get("size",0) <= 35*1024*1024:
             continue
         meta=info.get("extmetadata",{})
         license_name=meta.get("LicenseShortName",{}).get("value","").strip().lower()
