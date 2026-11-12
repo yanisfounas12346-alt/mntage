@@ -57,7 +57,7 @@ class CheckpointTests(unittest.TestCase):
         def fake_run(label, command, timeout, **kwargs):
             if "-filters" in command:
                 self.assertEqual(kwargs["output_limit"], 100000)
-                output = "Filters:\\n ... ass V->V Render ASS subtitles.\\n"
+                output = "Filters:\n ... ass V->V Render ASS subtitles.\n"
             else:
                 output = "version confirmed"
             return self._media_step(command, output)
@@ -75,7 +75,7 @@ class CheckpointTests(unittest.TestCase):
         def fake_run(label, command, timeout, **kwargs):
             return self._media_step(
                 command,
-                "Filters:\\n ... subtitles V->V Burn text.\\n"
+                "Filters:\n ... subtitles V->V Burn text.\n"
                 if "-filters" in command else "version confirmed")
         with patch.object(gate, "_run", side_effect=fake_run):
             steps = gate._check_media_tools()
@@ -110,7 +110,7 @@ class CheckpointTests(unittest.TestCase):
             for name in gate.SOURCE_FILES:
                 target = root / name
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("# placeholder\\n", encoding="utf-8")
+                target.write_text("# placeholder\n", encoding="utf-8")
             missing = self._media_step(
                 ["ffmpeg", "-hide_banner", "-filters"], "filtre ASS absent", False)
             with patch.object(gate, "ROOT", root), patch.object(gate, "OUT", root/"results"):
