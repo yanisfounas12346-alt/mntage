@@ -63,6 +63,13 @@ class VideoPlanningTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         duration_seconds(Path("voice.mp3"))
 
+    def test_rejects_oversized_video_before_voice(self):
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Chaque clip MP4"):
+                make_video("test","Bonjour",[],video_bytes=[b"x"*(100*1024*1024+1)])
+        voice.assert_not_called()
+
     def test_rejects_decompressed_images_over_pixel_budget(self):
         validate_image_dimensions(4000,4000)
         with self.assertRaisesRegex(ValueError,"40 mégapixels"):
