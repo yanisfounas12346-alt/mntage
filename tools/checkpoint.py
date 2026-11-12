@@ -27,6 +27,7 @@ SOURCE_FILES = (
     "tools/checkpoint.py",
     "tools/next_request.py",
     "tools/session_handoff.py",
+    "tools/pilot_3.py",
 )
 
 
