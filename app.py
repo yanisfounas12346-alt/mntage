@@ -4,7 +4,7 @@ from html import unescape
 from pathlib import Path
 import streamlit as st
 from video_factory import make_video
-from science_wtf import science_scenes, sample_script, cloud_scene_prompts, TOPICS
+from science_wtf import free_script_scenes, script_scene_prompts, sample_script, TOPICS
 from tiktok_pro import audit_script, production_brief, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images, scene_prompts
@@ -31,10 +31,11 @@ tab_create,tab_queue,tab_stats=st.tabs(["🎬 Créer","📂 File & historique","
 with tab_create:
     science_mode=st.checkbox("🧪 Science WTF — format scientifique illustré",value=False)
     science_source=st.radio("Illustrations Science WTF",["Gratuit — dessins locaux"] + (["Premium — illustrations IA fal.ai (payant)"] if cloud_configured() else []),horizontal=True) if science_mode else "Gratuit — dessins locaux"
-    science_topic=st.selectbox("Sujet Science WTF",list(TOPICS),format_func=lambda key: TOPICS[key][0]) if science_mode else "abysses"
+    science_subject=st.text_input("Sujet libre Science WTF",value="Le miroir qui déforme ton visage") if science_mode else ""
+    science_topic=st.selectbox("Exemples facultatifs",["Aucun"]+list(TOPICS),format_func=lambda key: TOPICS[key][0] if key in TOPICS else key) if science_mode else "Aucun"
     if science_mode:
         st.caption("Dessins locaux gratuits ou illustrations fal.ai sur confirmation. Le script exemple est un brouillon : vérifie les faits et vise 70–85 secondes.")
-        if st.button("✍️ Charger un exemple de script"):
+        if science_topic != "Aucun" and st.button("✍️ Charger un exemple de script"):
             st.session_state["science_script"]=sample_script(science_topic)
     title=st.text_input("Titre","Mon premier Short")
     script=st.text_area("Script",height=230,placeholder="Colle ton script…",key="science_script")
@@ -87,8 +88,8 @@ with tab_create:
         if images:return [i.getvalue() for i in images]
         if science_mode and not user_clips:
             if science_source.startswith("Premium"):
-                return generate_cloud_images(cloud_scene_prompts(science_topic,cloud_count),confirmed=cloud_approval,cap_eur=cloud_cap)
-            return science_scenes(script,science_topic)
+                return generate_cloud_images(script_scene_prompts(script,science_subject,cloud_count),confirmed=cloud_approval,cap_eur=cloud_cap)
+            return free_script_scenes(script,science_subject)
         if mode.startswith("IA cloud"):
             return generate_cloud_images(scene_prompts(script,visual_style,limit=cloud_count),
                 confirmed=cloud_approval,cap_eur=cloud_cap)
