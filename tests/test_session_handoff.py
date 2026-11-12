@@ -15,10 +15,13 @@ class SessionHandoffTests(unittest.TestCase):
         self.root=Path(self.folder.name)
         self._state_patch=patch.object(handoff,"STATE_FILE",self.root/"session.json")
         self._gate_patch=patch.object(handoff.gate,"OUT",self.root/"checkpoints")
+        self._handoff_patch=patch.object(handoff,"HANDOFF_FILE",self.root/"resume_prompt.txt")
         self._state_patch.start()
         self._gate_patch.start()
+        self._handoff_patch.start()
         self.addCleanup(self._state_patch.stop)
         self.addCleanup(self._gate_patch.stop)
+        self.addCleanup(self._handoff_patch.stop)
 
     def test_persists_counter_and_does_not_send_pending_twice(self):
         s=handoff.initial()
@@ -37,6 +40,17 @@ class SessionHandoffTests(unittest.TestCase):
         self.assertIsNone(reloaded["pending"])
         self.assertIn("abc123",handoff.make_handoff(reloaded))
         self.assertIn("Rendre les gestes",handoff.make_handoff(reloaded))
+
+    def test_handoff_file_is_refreshed_after_every_change(self):
+        s=handoff.initial()
+        handoff.save(s)
+        first=handoff.begin(s)
+        text=handoff.HANDOFF_FILE.read_text(encoding="utf-8")
+        self.assertIn(first["request_id"],text)
+        handoff.complete(s,first["request_id"],"Première amélioration vérifiée")
+        updated=handoff.HANDOFF_FILE.read_text(encoding="utf-8")
+        self.assertIn("DEMANDES CONFIRMÉES : 1/100",updated)
+        self.assertNotIn("EN COURS, ID",updated)
 
     def test_rejects_wrong_request_id_and_does_not_increment(self):
         s=handoff.initial()
