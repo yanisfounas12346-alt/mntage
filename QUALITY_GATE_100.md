@@ -1,0 +1,87 @@
+# MNTAGE — Bilan critique à 100 demandes d'optimisation
+
+Démarrage du suivi : **12 novembre 2026**.
+
+**Compteur vérifiable de ce nouveau cycle : 0 / 100 demandes enregistrées.** Les
+anciens échanges et commits ne sont pas reconstitués artificiellement : ce compteur
+ne signifie pas qu'aucune optimisation n'a eu lieu avant cette date.
+
+## Règles de comptage
+
+- **Une demande utilisateur d'optimisation = une entrée**, qu'elle aboutisse à un
+  changement de code, une décision de ne rien changer ou un diagnostic.
+- Une entrée comporte une date, une description, le défaut visé, un test ou une
+  preuve visuelle, les commits éventuels et un statut : validée, partielle, échouée.
+- Ne compter **ni les réponses d'encouragement ni les modifications cosmétiques
+  multiples** comme plusieurs demandes.
+- Une demande livrée sans preuve de test reste *partielle*. Les erreurs découvertes
+  comptent dans le bilan, elles ne sont pas effacées.
+- Les optimisations liées à l'audio ne modifient pas le choix des voix. Validation
+  TikTok en temps réel : hors périmètre tant que suspendue.
+
+## Journal à compléter à chaque nouvelle demande
+
+| N° | Date | Demande et défaut | Modification / commit | Preuve ou test | Statut |
+|---:|---|---|---|---|---|
+| — | — | À renseigner pour la prochaine demande d'optimisation | — | — | — |
+
+## État de référence au démarrage (à vérifier, pas un score de performance)
+
+- Pilote d'animation d'un sujet spécialisé : miroir et perception visuelle.
+- Six compositions de plans, sous 3,25 s dans les tests du storyboard ; lip-sync
+  approximatif fondé sur le niveau de l'audio ; 1080 × 1920 à 25 i/s.
+- Tests ciblés et aperçus courts réalisés ; **pas de preuve documentée d'un
+  parcours complet et fiable sur le Windows cible**.
+- Qualité esthétique de niveau prototype ; pas de validation de 3 sujets distincts,
+  pas de mesure de temps/coût par vidéo, pas de test de vente.
+- Les évaluations antérieures de « 65 % » ne mesurent ni la satisfaction client,
+  ni la qualité professionnelle, ni la rentabilité.
+
+## Protocole de réévaluation après la 100e demande
+
+### A. Qualité artistique et narration (0–10)
+
+Évaluer **à l'aveugle** au moins 3 vidéos complètes de 60–90 secondes sur
+**3 sujets scientifiques différents**, pas uniquement des extraits de miroir :
+compréhension sans explication externe, synchronisation de l'image avec les
+phrases, expressivité, variété et cohérence du style, lisibilité mobile, impact
+des 3 premières secondes. Recueillir aussi des avis externes, y compris négatifs.
+
+### B. Fiabilité technique
+
+Exécuter de bout en bout sur le PC Windows cible : tests unitaires complets,
+génération + export + sous-titres + audio, durée audio/vidéo, mémoire et temps de
+rendu, retour après erreur. Vérifier 1080 × 1920, 25 i/s, aucun plan > 4 s,
+pas de personnages en double, pas d'objets hors récit, pas de décalage voix/visuel
+gênant. Une démonstration de 8 s **ne suffit pas**.
+
+### C. Généralisation
+
+Vérifier qu'un nouveau sujet fonctionne **sans réécrire les animations à la
+main** et sans inventer d'illustrations hors sujet. Rapporter explicitement le
+pourcentage de demandes prises en charge et la part nécessitant une intervention
+manuelle.
+
+### D. Rentabilité
+
+Mesurer le coût total **par vidéo** : logiciels et services, électricité
+si pertinente, temps humain complet (préparation, corrections, rendu, livraison),
+commissions, retours client. Distinguer **chiffre d'affaires, marge brute,
+bénéfice et rémunération du travail**. Ne pas conclure à la rentabilité
+commerciale avant des ventes réelles et répétables. Les revenus TikTok supposés
+ne comptent pas comme revenus prouvés.
+
+### E. Verdict contradictoire obligatoire
+
+Après 100 demandes documentées, produire :
+1. Ce qui fonctionne, avec preuves ;
+2. Ce qui échoue encore et fréquence des bugs ;
+3. Une note artistique /10 avec méthode et taille d'échantillon ;
+4. Les coûts et délais mesurés ;
+5. Les limites du moteur pour de nouveaux sujets ;
+6. **GO / PIVOT / STOP** motivé, sans utiliser le nombre de commits ou
+   de demandes comme preuve de qualité.
+
+**Important :** atteindre 100 demandes n'est pas en soi un succès et ne garantit
+pas 100 % de qualité. Une faiblesse majeure doit être signalée immédiatement,
+sans attendre la centième demande.
