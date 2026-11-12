@@ -2,9 +2,12 @@
 
 Démarrage du suivi : **12 novembre 2026**.
 
-**Compteur vérifiable de ce nouveau cycle : 0 / 100 demandes enregistrées.** Les
-anciens échanges et commits ne sont pas reconstitués artificiellement : ce compteur
-ne signifie pas qu'aucune optimisation n'a eu lieu avant cette date.
+**Cycle de développement visé : 600 optimisations.** Le présent document est
+la **première réévaluation critique à 100**. Optimisation #1/600 livrée sur
+GitHub, **tests Windows et contrôle visuel encore à effectuer** : statut partiel.
+Le compteur persistant du PC reste indépendant et ne s'incrémente qu'après
+confirmation via `tools/session_handoff.py`. Les anciens échanges ne sont pas
+reconstitués artificiellement.
 
 ## Règles de comptage
 
@@ -23,7 +26,7 @@ ne signifie pas qu'aucune optimisation n'a eu lieu avant cette date.
 
 | N° | Date | Demande et défaut | Modification / commit | Preuve ou test | Statut |
 |---:|---|---|---|---|---|
-| — | — | À renseigner pour la prochaine demande d'optimisation | — | — | — |
+| 1 | 2026-11-12 | Libellés du dessin animé lisibles sur Windows ; objectif de reprise étendu sans perte à 600 | `b635c18`, `e33018a` | `tests/test_typography.py` et migration du suivi ajoutés ; **à exécuter sur Windows** | Partielle |
 
 ## État de référence au démarrage (à vérifier, pas un score de performance)
 
