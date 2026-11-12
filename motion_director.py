@@ -293,7 +293,23 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
                 y=397+19*math.sin(travel*math.pi+i*.6)
                 p.ellipse((x-7,y-7,x+7,y+7),CYAN)
     elif kind=="experiment":
-        if mode==1:
+        if mode==2:
+            # Tight mirror observation with a time cue: the experiment is visible.
+            _mirror(p,276,470,295,464,t,distortion=.12*_ease(arc))
+            _actor(p,88,711,.42,t,mouth=mouth,action="inspect",progress=arc)
+            p.ellipse((71,279,149,357),outline=YELLOW,width=5)
+            theta=t*1.5
+            p.line([(110,318),(110+27*math.sin(theta),318-27*math.cos(theta))],
+                   YELLOW,4)
+        elif mode==3:
+            # Reaction to an observation, instead of repeating the wide shot.
+            _mirror(p,146,456,200,360,t,distortion=.14*_ease(arc))
+            _actor(p,363,685,.91,t,mouth=mouth,action="inspect",progress=arc)
+            p.ellipse((343,292,444,393),outline=YELLOW,width=5)
+            theta=t*1.6
+            p.line([(393,342),(393+37*math.sin(theta),342-37*math.cos(theta))],
+                   YELLOW,5)
+        elif mode==1:
             _actor(p,240,673,1.06,t,mouth=mouth,action="point",progress=arc)
             p.ellipse((378,300,468,390),outline=YELLOW,width=6)
             theta=t*2
