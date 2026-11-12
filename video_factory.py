@@ -146,6 +146,8 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         raise ValueError("Un script et au moins un visuel sont nécessaires.")
     if len(image_bytes) > 24 or len(video_bytes or []) > 24:
         raise ValueError("Maximum 24 visuels pour protéger les ressources du PC.")
+    if any(len(data)>100*1024*1024 for data in (video_bytes or [])):
+        raise ValueError("Chaque clip MP4 doit faire au maximum 100 Mo.")
     if sum(map(len,video_bytes or [])) > 300*1024*1024:
         raise ValueError("Les vidéos dépassent la limite totale de 300 Mo.")
     if any(len(data)>20*1024*1024 for data in image_bytes):
@@ -172,7 +174,6 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     source = source_paths.get(idx % count)
                     if source is None:
                         source = work / f"source_{idx % count:03d}.mp4"
-                        if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
                         source.write_bytes(data)
                         inspect_source_video(source)
                         source_paths[idx % count] = source
