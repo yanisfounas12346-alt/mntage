@@ -109,3 +109,68 @@ def cloud_scene_prompts(topic: str, count: int = 8) -> list[str]:
              "no text, no letters, no watermark, no logos, "
              "keep lower 30 percent visually quiet for subtitles. ")
     return [style + subject[i % len(subject)] for i in range(count)]
+
+def script_scene_prompts(script: str, subject: str, count: int = 8) -> list[str]:
+    """Build visual prompts from the actual narration, not a preset topic."""
+    if not script.strip(): raise ValueError("Script vide.")
+    if not subject.strip(): raise ValueError("Indique le sujet de l'épisode.")
+    if not 1 <= count <= 12: raise ValueError("Entre 1 et 12 scènes.")
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", script) if s.strip()]
+    if not sentences: raise ValueError("Script vide.")
+    # Group consecutive sentences so the whole story is represented.
+    chunks = [[] for _ in range(min(count, len(sentences)))]
+    for i, sentence in enumerate(sentences):
+        index = min(i * len(chunks) // len(sentences), len(chunks)-1)
+        chunks[index].append(sentence)
+    direction = ("Original vertical 9:16 premium educational 2D cartoon illustration, "
+                 "dark midnight blue with teal and yellow accents, cinematic lighting, "
+                 "one recurring simple white stick-figure scientist mascot with a small "
+                 "yellow explorer backpack, expressive gestures, scientifically plausible "
+                 "visual storytelling, no text, no letters, no logo, no watermark, "
+                 "leave bottom 30 percent uncluttered for subtitles. ")
+    return [direction + "Episode subject: " + subject[:120] +
+            ". Illustrate this specific moment in the narration: " + " ".join(group)[:600]
+            for group in chunks if group]
+
+def free_script_scenes(script: str, subject: str, count: int = 12) -> list[bytes]:
+    """Free fallback cards tied to a custom subject, never to unrelated presets."""
+    if not script.strip() or not subject.strip(): raise ValueError("Sujet et script requis.")
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", script) if s.strip()]
+    if not sentences: raise ValueError("Script vide.")
+    output = []
+    for i in range(count):
+        im = Image.new("RGB", (540, 960), (13, 22, 42))
+        d = ImageDraw.Draw(im)
+        d.rounded_rectangle((25, 25, 515, 935), radius=30, outline=(70, 220, 210), width=4)
+        d.text((42, 65), "SCIENCE WTF", fill=(255, 218, 87), font=_font(38))
+        words = subject.upper().split()
+        title_lines, line = [], ""
+        for word in words:
+            if len(line + " " + word) > 19:
+                title_lines.append(line); line = word
+            else: line = (line + " " + word).strip()
+        if line: title_lines.append(line)
+        for j, item in enumerate(title_lines[:2]):
+            d.text((42, 128 + j*42), item, fill="white", font=_font(28))
+        x,y=270,440
+        d.ellipse((x-48,y-140,x+48,y-44),outline="white",width=9)
+        d.ellipse((x-22,y-104,x-13,y-95),fill="white")
+        d.ellipse((x+13,y-104,x+22,y-95),fill="white")
+        d.arc((x-18,y-92,x+18,y-65),0,180,fill=(255,218,87),width=5)
+        d.line((x,y-44,x,y+105),fill="white",width=11)
+        d.line((x,y+8,x-95,y-32+(i%3)*22),fill="white",width=9)
+        d.line((x,y+8,x+95,y-42+(i%3)*22),fill="white",width=9)
+        d.line((x,y+105,x-80,y+205),fill="white",width=9)
+        d.line((x,y+105,x+80,y+205),fill="white",width=9)
+        fact = sentences[min(i*len(sentences)//count,len(sentences)-1)]
+        lines=[]; line=""
+        for word in fact.split():
+            if len(line+" "+word)>29:
+                lines.append(line); line=word
+            else: line=(line+" "+word).strip()
+        if line: lines.append(line)
+        d.rounded_rectangle((42,680,498,870),radius=24,fill=(26,71,82))
+        for j,item in enumerate(lines[:5]):
+            d.text((55,699+j*33),item,fill="white",font=_font(23))
+        b=BytesIO(); im.save(b,format="PNG"); output.append(b.getvalue())
+    return output
