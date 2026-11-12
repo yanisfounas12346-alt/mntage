@@ -14,7 +14,7 @@ if (-not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "=== mntage : verification Windows ==="
-& $python -m compileall -q app.py stock_media.py video_factory.py subtitles.py tests
+& $python -m compileall -q app.py job_store.py stock_media.py video_factory.py subtitles.py tests
 if ($LASTEXITCODE -ne 0) { throw "Echec de la compilation Python." }
 
 $assFilter = & ffmpeg -hide_banner -filters 2>&1 | Select-String -Pattern '^\s*\.\.\.\s+ass\s'
