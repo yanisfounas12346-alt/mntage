@@ -185,6 +185,81 @@ def _stage(p,kind,shot,progress,t):
         r=12+4*math.sin(t*2+j)
         p.ellipse((cx-r,238-r,cx+r,238+r),outline=(36,87,96),width=2)
 
+def _macro_reflection(p, t, arc, *, distortion=0.65):
+    """Extreme close-up of the subject: moving eyes, nose and distorted mouth."""
+    d = max(0.0, min(1.0, distortion))
+    p.rect((45,250,495,690),MIRROR,radius=38,outline=CYAN,width=7)
+    p.ellipse((75-18*d*math.sin(t*2),260,465+18*d*math.sin(t*2),670),
+              WHITE,outline=INK,width=9)
+    for index, cx in enumerate((182,352)):
+        shift=math.sin(t*3.7+index)*13*d
+        height=31*(1+index*d*.85)
+        cy=418 - index*38*d + 8*math.sin(t*1.8+index)
+        p.ellipse((cx-49,cy-height,cx+49,cy+height),WHITE,outline=INK,width=6)
+        p.ellipse((cx-12+shift,cy-17,cx+12+shift,cy+17),INK)
+        p.ellipse((cx-8+shift,cy-12,cx-3+shift,cy-7),WHITE)
+        p.line([(cx-52,cy-height-20),(cx+45,cy-height-29-12*d*index)],INK,6)
+    p.line([(268,458),(257-16*d,527),(277+9*d,538)],(130,149,159),6)
+    opening=10+30*d*(.6+.4*math.sin(t*2.1)**2)
+    p.ellipse((240-opening,567-opening*.4,300+opening,580+opening),INK)
+    if d>.3:
+        for j in range(3):
+            y=334+j*98+10*math.sin(t*3+j)
+            p.line([(100,y),(440,y+8*d*math.sin(t*2+j))],
+                   PINK if j==1 else CYAN,3)
+    # Branded color bars help explain the comparison, not random stickers.
+    p.rect((67,718,67+406*arc,726),PINK,radius=4)
+
+
+def _comparison(p, t, arc, *, science=False):
+    """Two meaningful visual states, not two unrelated decorative panels."""
+    p.rect((29,281,511,690),PANEL,radius=28,outline=PANEL2,width=4)
+    p.line([(270,295),(270,684)],MUTED,3)
+    p.text((143,316),"NORMAL",WHITE,17)
+    p.text((392,316),"PERÇU",CYAN,17)
+    if science:
+        _brain(p,150,488,t,.46,build=1.0)
+        _brain(p,390,488,t,.46,build=_ease_out(arc))
+        for j in range(3):
+            x=304+18*math.sin(t*2.5+j)
+            p.ellipse((x-6,450+j*36-6,x+6,450+j*36+6),YELLOW)
+    else:
+        _reflect_face(p,148,485,63,0.0,t)
+        _reflect_face(p,393,485,63,.38+.6*_ease_out(arc),t)
+        p.line([(148,564),(148,640)],WHITE,12)
+        p.line([(393,564),(393,640)],WHITE,12)
+    p.rect((39,743,501,750),PANEL2,radius=3)
+    p.rect((39,743,39+462*_ease_out(arc),750),YELLOW,radius=3)
+
+
+def _detail_cutaway(p, kind, t, arc, mouth, *, shot=4):
+    """Sixth and fifth authored compositions: eye macro, comparison, lab timer."""
+    if shot==5:
+        _comparison(p,t,arc,science=kind in ("brain","neural","vision"))
+        return
+    if kind in ("brain","neural","vision"):
+        _brain(p,270,453,t,1.45,build=_ease_out(arc))
+        for j in range(4):
+            phase=(t*.45+j*.25)%1
+            x=75+phase*390
+            y=694-24*math.sin(phase*math.pi+j*.3)
+            p.ellipse((x-7,y-7,x+7,y+7),YELLOW if j%2 else CYAN)
+    elif kind=="experiment":
+        p.ellipse((101,285,439,624),PANEL2,outline=YELLOW,width=10)
+        for j in range(12):
+            ang=j*math.tau/12
+            p.line([(270+131*math.sin(ang),453-131*math.cos(ang)),
+                    (270+144*math.sin(ang),453-144*math.cos(ang))],WHITE,4)
+        angle=t*1.2
+        p.line([(270,453),(270+120*math.sin(angle),453-120*math.cos(angle))],
+               YELLOW,10)
+        p.ellipse((258,441,282,465),WHITE)
+        _actor(p,135,688,.53,t,action="inspect",mouth=mouth,progress=arc)
+    else:
+        strength=.83*_ease_out(arc) if kind in ("distort","reveal") else .1
+        _macro_reflection(p,t,arc,distortion=strength)
+
+
 def draw_professional_frame(base: Image.Image,kind: str,shot: int,
                             progress: float,seconds: float,mouth: float,beat_progress=None,
                             absolute_seconds=None)->Image.Image:
@@ -194,8 +269,10 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
     t=progress*seconds if absolute_seconds is None else absolute_seconds
     arc=progress if beat_progress is None else beat_progress
     _stage(p,kind,shot,progress,t)
-    mode=shot%4
-    if kind in ("brain","neural","vision"):
+    mode=shot%6
+    if mode in (4,5):
+        _detail_cutaway(p,kind,t,arc,mouth,shot=mode)
+    elif kind in ("brain","neural","vision"):
         if mode in (0,2):
             _brain(p,275,438,t,1.43 if mode==2 else 1.17,build=_ease_out(min(1,arc*1.7)))
             _actor(p,102,700,.50,t,mouth=mouth,action="point",feeling="curious",progress=arc)
