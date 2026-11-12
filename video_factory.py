@@ -177,7 +177,8 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         base = work / "base.mp4"
         _run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0",
               "-i",str(concat),"-i",str(audio),"-map","0:v:0","-map","1:a:0",
-              "-t",str(duration),"-c:v","copy","-c:a","aac","-b:a","160k",
+              "-t",str(duration),"-c:v","libx264","-preset","veryfast","-crf","23",
+              "-pix_fmt","yuv420p","-c:a","aac","-b:a","160k",
               "-movflags","+faststart",str(base)])
         filters = []
         if captions:
