@@ -265,9 +265,10 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     im.save(img, quality=85)
                 clip = work / f"clip_{idx:03d}.mp4"
                 frames = max(1, round(scene_duration * 25))
-                # Alternate camera movement between scenes, staying lightweight on CPU.
-                zoom = ("min(zoom+0.0035,1.22)" if idx % 2 == 0 else "if(eq(on,0),1.22,max(zoom-0.0035,1.0))") if dynamic else ("min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))")
-                x = ("iw/2-(iw/zoom/2)" if idx % 2 else "min(iw-iw/zoom,on*1.2)") if dynamic else ("iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)")
+                # Science WTF: faster cuts, stable framing. No continuous panning or zooming.
+                # Older non-dynamic exports retain their subtle Ken Burns movement.
+                zoom = "1" if dynamic else ("min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))")
+                x = "0" if dynamic else ("iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)")
                 _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
                       "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
                       "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
