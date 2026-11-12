@@ -65,15 +65,18 @@ with tab_create:
             try:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
-                    if mode.startswith("Auto"):
+                    if user_clips:
+                        # Uploaded footage takes priority over automatic stock search.
+                        clips=[file.getvalue() for file in user_clips]
+                        st.info("Clips personnels sélectionnés : recherche automatique ignorée.")
+                    elif mode.startswith("Auto"):
                         found,clips,missing=download_commons_scenes(script,limit=8)
                         if missing:st.warning("Scènes non illustrées : "+", ".join(missing))
                         st.session_state["commons_sources"]=found
                         st.info("Vidéos Wikimedia Commons : vérifie les plans et conserve les crédits de chaque auteur.")
                         st.code("\n".join(f"{item['title']} | {item['license']} | {item['page']}" for item in found))
                     elif mode.startswith("Mes clips"):
-                        if not user_clips:raise RuntimeError("Ajoute au moins un clip MP4 dans Options avancées.")
-                        clips=[file.getvalue() for file in user_clips]
+                        raise RuntimeError("Ajoute au moins un clip MP4 dans Options avancées.")
                     elif mode.startswith("Vidéos"):
                         found,missing=(select_pixabay_scenes(script,limit=8) if "Pixabay" in mode else select_video_scenes(script,limit=8))
                         if missing:st.warning("Certaines scènes n'ont pas de clip correspondant : "+", ".join(missing))
@@ -81,7 +84,7 @@ with tab_create:
                         st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
                         st.info("Montage automatique avec de vrais clips ; vérifie que chaque plan illustre correctement ton texte.")
                     path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips)
-                    if mode.startswith("Auto"):
+                    if mode.startswith("Auto") and not user_clips:
                         sources=st.session_state.get("commons_sources",[])
                         path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}" for x in sources),encoding="utf-8")
                 st.session_state["last_video"]=str(path)
