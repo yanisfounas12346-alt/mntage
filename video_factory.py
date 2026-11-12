@@ -143,6 +143,10 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         raise ValueError("Maximum 24 visuels pour protéger les ressources du PC.")
     if sum(map(len,video_bytes or [])) > 300*1024*1024:
         raise ValueError("Les vidéos dépassent la limite totale de 300 Mo.")
+    if any(len(data)>20*1024*1024 for data in image_bytes):
+        raise ValueError("Chaque image doit faire au maximum 20 Mo.")
+    if sum(map(len,image_bytes)) > 100*1024*1024:
+        raise ValueError("Les images dépassent la limite totale de 100 Mo.")
     OUT.mkdir(exist_ok=True)
     output = OUT / f"{slugify(title)}-{uuid4().hex[:8]}.mp4"
     try:
