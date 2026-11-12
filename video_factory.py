@@ -108,15 +108,23 @@ def validate_output(path: Path, expected_duration: float) -> None:
     import json
     if not path.is_file() or path.stat().st_size < 1024:
         raise RuntimeError("Le MP4 exporté est absent ou vide.")
-    result=subprocess.run(
-        ["ffprobe","-v","error","-show_entries",
-         "format=duration:stream=codec_type,width,height",
-         "-of","json",str(path)],
-        capture_output=True,text=True,timeout=30)
+    try:
+        result=subprocess.run(
+            ["ffprobe","-v","error","-show_entries",
+             "format=duration:stream=codec_type,width,height",
+             "-of","json",str(path)],
+            capture_output=True,text=True,timeout=30)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        raise RuntimeError("Impossible de vérifier le MP4 : FFprobe indisponible ou trop lent.") from exc
     if result.returncode:
         raise RuntimeError("Impossible de vérifier le MP4 : "+result.stderr[-500:])
-    data=json.loads(result.stdout)
-    streams=data.get("streams",[])
+    try:
+        data=json.loads(result.stdout)
+        streams=data["streams"]
+        if not isinstance(streams,list):
+            raise ValueError("Liste des pistes invalide")
+    except (ValueError, TypeError, KeyError) as exc:
+        raise RuntimeError("Métadonnées du MP4 exporté illisibles.") from exc
     videos=[s for s in streams if s.get("codec_type")=="video"]
     audios=[s for s in streams if s.get("codec_type")=="audio"]
     if not videos or not audios:
