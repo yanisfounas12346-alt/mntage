@@ -43,7 +43,7 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertTrue(any("ocean" in x for x in q))
         self.assertTrue(any("space" in x for x in q))
     def test_french_queries_preserve_scene_order(self):
-        q=scene_queries("La montagne domine la vallée. Une voiture passe sur la route.\\nUn ordinateur s'allume.",8)
+        q=scene_queries("La montagne domine la vallée. Une voiture passe sur la route.\nUn ordinateur s'allume.",8)
         self.assertEqual(q,["mountain landscape","cars road","computer technology"])
 
     def test_no_false_keyword_matches(self):
