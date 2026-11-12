@@ -30,6 +30,7 @@ class MotionScene:
     kind: str
     start: float
     end: float
+    shot: int = 0
 
 
 # Stage boundaries are located in the actual script, rather than fixed time slots.
@@ -89,7 +90,30 @@ def plan_mirror_scenes(script: str, duration: float, boundaries: list[dict] | No
             result.append(MotionScene(kind, start, end))
     if len(result) < 4:
         raise ValueError("Storyboard miroir incomplet : colle le script du miroir pour animer correctement l'histoire.")
-    return result
+    # Cut the narration into short compositions without moving the camera.
+    shots = []
+    for beat in result:
+        shot_count = max(1, math.ceil((beat.end - beat.start) / 3.25))
+        for part in range(shot_count):
+            a = beat.start + (beat.end - beat.start) * part / shot_count
+            b = beat.start + (beat.end - beat.start) * (part + 1) / shot_count
+            shots.append(MotionScene(beat.kind, a, b, len(shots) % 4))
+    return shots
+
+
+def mouth_open_at(seconds: float, boundaries: list[dict] | None) -> float:
+    """Word-aligned mouth motion from TTS timestamps; not phoneme-perfect lip sync."""
+    if boundaries is None:
+        return 0.25 + 0.7 * abs(math.sin(seconds * 15.0))
+    for word in boundaries:
+        try:
+            start = float(word["offset"]) / 10_000_000.0
+            end = start + float(word["duration"]) / 10_000_000.0
+        except (TypeError, KeyError, ValueError):
+            continue
+        if start <= seconds < end:
+            return 0.18 + 0.78 * abs(math.sin((seconds - start) * 23.0))
+    return 0.0
 
 
 def _ease(t: float) -> float:
@@ -150,7 +174,7 @@ def _limb(p, pts, width=13):
         p.ellipse((x-width/2, y-width/2, x+width/2, y+width/2), WHITE)
 
 
-def _scientist(p, cx, cy, size=1.0, wave=0.0, startled=0.0, blink=False, side=1):
+def _scientist(p, cx, cy, size=1.0, wave=0.0, startled=0.0, blink=False, side=1, mouth=0.0):
     """One consistent original character. Limbs, backpack and face are separate motions."""
     def xy(x, y):
         return (cx + x * size * side, cy + y * size)
@@ -174,7 +198,17 @@ def _scientist(p, cx, cy, size=1.0, wave=0.0, startled=0.0, blink=False, side=1)
     else:
         p.ellipse(box(-23,-110,-12,-97), DARK)
         p.ellipse(box(12,-110,23,-97), DARK)
-    if startled > 0.35:
+    if mouth > 0.12:
+        lip_width = 7 + 9 * mouth
+        lip_height = 3 + 15 * mouth
+        center = at(0, -76)
+        p.ellipse((center[0]-lip_width*size, center[1]-lip_height*size,
+                   center[0]+lip_width*size, center[1]+lip_height*size), DARK)
+        if mouth > 0.75:
+            p.line([(center[0]-lip_width*size*.65,center[1]+lip_height*size*.54),
+                    (center[0]+lip_width*size*.65,center[1]+lip_height*size*.54)],
+                   PINK, 2*size)
+    elif startled > 0.35:
         p.ellipse(box(-8,-87,8,-66), DARK)
     else:
         p.line([at(-12,-77), at(0,-70), at(13,-78)], DARK, 3*size)
@@ -231,33 +265,35 @@ def _brain(p, cx=270, cy=370, t=0.0, scale=1.0):
     p.line([(cx,cy-110*scale),(cx,cy+114*scale)], (7,24,38), 8*scale)
 
 
-def _draw_frame(size, kind, progress, seconds, base):
+def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0):
     frame=base.copy()
     p=_Painter(frame)
     t=progress*seconds
+    if shot % 4:
+        return _draw_alt_frame(frame, kind, shot % 4, progress, seconds, mouth)
     p.ellipse((62,266,475,670), outline=PANEL2, width=2)
     if kind in ("approach", "stare", "reassure", "distort", "experiment", "reveal"):
         if kind=="distort":
             fade=_ease(progress*1.5)
             _mirror(p,270,226,312,480,distort=fade*(.70+.27*math.sin(t*2)),t=t)
-            _scientist(p,97,665,.47,wave=t*2, startled=.8, side=1)
+            _scientist(p,97,665,.47,wave=t*2, startled=.8, side=1, mouth=mouth)
         elif kind=="experiment":
             _mirror(p,185,268,177,395,distort=.2*progress,t=t)
-            _scientist(p,310,630,.67,wave=t*2,startled=.1)
+            _scientist(p,310,630,.67,wave=t*2,startled=.1,mouth=mouth)
             p.ellipse((359,225,475,341), fill=PANEL, outline=YELLOW, width=6)
             angle=t*1.7
             p.line([(417,283),(417+43*math.sin(angle),283-43*math.cos(angle))],YELLOW,5)
             p.ellipse((409,275,425,291),YELLOW)
         elif kind=="reveal":
             _mirror(p,360,256,202,394,distort=max(0,1-_ease(progress*2)),t=t)
-            _scientist(p,151,620,.74,wave=t*2,startled=0,side=1)
+            _scientist(p,151,620,.74,wave=t*2,startled=0,side=1,mouth=mouth)
             p.ellipse((235,238,275,278),YELLOW)
             p.ellipse((240,243,270,273),PANEL)
         else:
             _mirror(p,384,252,180,415,distort=0.0,t=t)
             x=-85+235*_ease(min(1,progress*1.5)) if kind=="approach" else 150
             _scientist(p,x,618,.74,wave=t*2,startled=.06 if kind=="stare" else 0,
-                       blink=(kind=="stare" and .82<(t%3)<.95))
+                       blink=(kind=="stare" and .82<(t%3)<.95), mouth=mouth)
             if kind=="stare":
                 for i in range(3):
                     alpha=(t*.85+i*.32)%1
@@ -265,7 +301,7 @@ def _draw_frame(size, kind, progress, seconds, base):
                     p.ellipse((385-r,370-r,385+r,370+r),outline=CYAN,width=1.5)
     elif kind in ("brain", "neural", "vision"):
         if kind=="vision":
-            _scientist(p,123,630,.72,wave=t*2)
+            _scientist(p,123,630,.72,wave=t*2,mouth=mouth)
             _brain(p,391,399,t,.67)
             for j in range(3):
                 shift=(t*.6+j/3)%1
@@ -273,7 +309,7 @@ def _draw_frame(size, kind, progress, seconds, base):
                 p.ellipse((x-7,393-7+j*17,x+7,393+7+j*17),YELLOW)
         else:
             _brain(p,270,402,t,1.05 if kind=="brain" else .91)
-            _scientist(p,105,678,.43,wave=t*2,startled=0)
+            _scientist(p,105,678,.43,wave=t*2,startled=0,mouth=mouth)
             if kind=="neural":
                 for i in range(6):
                     ang=i*math.tau/6+t*.15
