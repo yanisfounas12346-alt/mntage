@@ -63,6 +63,13 @@ class VideoPlanningTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         duration_seconds(Path("voice.mp3"))
 
+    def test_rejects_oversized_images_before_voice_or_ffmpeg(self):
+        with patch("video_factory.require_ffmpeg") as ffmpeg, \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Chaque image"):
+                make_video("test","Bonjour",[b"x"*(20*1024*1024+1)])
+        voice.assert_not_called()
+
     def test_failed_render_removes_partial_output(self):
         async def fake_voice(script,destination,voice,rate):
             destination.write_bytes(b"audio")
