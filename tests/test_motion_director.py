@@ -22,6 +22,13 @@ class ProfessionalMotionTests(unittest.TestCase):
         self.assertLessEqual(max(s.end-s.start for s in scenes),3.251)
         self.assertAlmostEqual(sum(s.end-s.start for s in scenes),86.0)
 
+    def test_storybeat_progress_is_preserved_across_cuts(self):
+        scenes=plan_mirror_scenes(SCRIPT,86.0)
+        self.assertTrue(all(0 <= s.beat_from < s.beat_to <= 1 for s in scenes))
+        for one,two in zip(scenes,scenes[1:]):
+            if one.kind == two.kind and one.beat_to < 1:
+                self.assertAlmostEqual(one.beat_to,two.beat_from)
+
     def test_mouth_animation_is_visible(self):
         base=_background((540,960),"stare")
         shut=_draw_frame((540,960),"stare",0.6,3.0,base,shot=1,mouth=0.0)
