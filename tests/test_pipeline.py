@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 from stock_media import scene_queries, select_video_scenes, search_commons_videos, search_videos, search_pixabay_videos, _download, download_videos, download_commons_scenes
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
-from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds
+from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds, validate_image_dimensions
 
 class VideoPlanningTests(unittest.TestCase):
     def test_pexels_avoids_oversized_files(self):
@@ -62,6 +62,13 @@ class VideoPlanningTests(unittest.TestCase):
                            return_value=SimpleNamespace(stdout=value,returncode=0)):
                     with self.assertRaises(RuntimeError):
                         duration_seconds(Path("voice.mp3"))
+
+    def test_rejects_decompressed_images_over_pixel_budget(self):
+        validate_image_dimensions(4000,4000)
+        with self.assertRaisesRegex(ValueError,"40 mégapixels"):
+            validate_image_dimensions(10000,5000)
+        with self.assertRaises(ValueError):
+            validate_image_dimensions(0,100)
 
     def test_rejects_oversized_images_before_voice_or_ffmpeg(self):
         with patch("video_factory.require_ffmpeg") as ffmpeg, \
