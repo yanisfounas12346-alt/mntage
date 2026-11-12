@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -31,7 +32,7 @@ SOURCE_FILES = (
 )
 
 
-def _run(label: str, command: list[str], timeout: int) -> dict:
+def _run(label: str, command: list[str], timeout: int, *, output_limit: int = 18000) -> dict:
     started = time.monotonic()
     try:
         result = subprocess.run(
@@ -44,7 +45,7 @@ def _run(label: str, command: list[str], timeout: int) -> dict:
             "ok": result.returncode == 0,
             "exit_code": result.returncode,
             "duration_seconds": round(time.monotonic() - started, 2),
-            "output": (result.stdout + "\n" + result.stderr)[-18000:],
+            "output": (result.stdout + "\n" + result.stderr)[-output_limit:],
         }
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {
@@ -55,6 +56,39 @@ def _run(label: str, command: list[str], timeout: int) -> dict:
             "duration_seconds": round(time.monotonic() - started, 2),
             "output": f"{type(exc).__name__}: {exc}",
         }
+
+
+
+def _check_media_tools() -> list[dict]:
+    """Verify actual encoder/prober execution and ASS subtitle support.
+
+    Presence on PATH alone is not sufficient: a corrupt FFmpeg binary or a
+    build without libass could otherwise incorrectly pass a tenth-request gate.
+    """
+    ffmpeg = _run("FFmpeg exécutable", ["ffmpeg", "-version"], 30)
+    ffprobe = _run("FFprobe exécutable", ["ffprobe", "-version"], 30)
+    command = ["ffmpeg", "-hide_banner", "-filters"]
+    if ffmpeg["ok"]:
+        # FFmpeg prints a long filter list; keep enough text to inspect ASS,
+        # which would otherwise be truncated by _run's standard log cap.
+        subtitle = _run("filtre ASS (sous-titres)", command, 30,
+                        output_limit=100000)
+        if subtitle["ok"] and not re.search(
+            r"(?m)^\\s*\\S+\\s+ass\\s+", subtitle["output"]
+        ):
+            subtitle["ok"] = False
+            subtitle["exit_code"] = 1
+            subtitle["output"] = (
+                "Le filtre 'ass' est absent de ce FFmpeg : export de "
+                "sous-titres incompatible.\\n" + subtitle["output"][-2000:]
+            )
+    else:
+        subtitle = {
+            "step": "filtre ASS (sous-titres)", "command": command,
+            "ok": False, "exit_code": None, "duration_seconds": 0,
+            "output": "Filtre ASS non vérifiable : FFmpeg ne s'exécute pas.",
+        }
+    return [ffmpeg, ffprobe, subtitle]
 
 
 def _write_results(iteration: int, steps: list[dict], ok: bool) -> tuple[Path, Path]:
@@ -144,14 +178,7 @@ def checkpoint(iteration: int, *, pull: bool = True) -> bool:
         _write_results(iteration, steps, False)
         return False
 
-    for binary in ("ffmpeg", "ffprobe"):
-        found = shutil.which(binary)
-        steps.append({
-            "step": f"{binary} disponible",
-            "command": [binary, "-version"], "ok": found is not None,
-            "exit_code": 0 if found else 1, "duration_seconds": 0,
-            "output": found or f"{binary} absent du PATH. Tests vidéo non fiables.",
-        })
+    steps.extend(_check_media_tools())
 
     tests = _run(
         "tests unitaires et de non-régression",
