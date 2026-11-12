@@ -116,7 +116,6 @@ def search_commons_videos(query, limit=6):
     with urlopen(Request(url,headers={"User-Agent":"mntage/1.0 (educational video creator; contact via GitHub)"}),timeout=25) as response:
         data=json.load(response)
     allowed={"cc0","cc0 1.0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0","cc by 4.0","cc by 3.0","cc by 2.0"}
-    allowed={"cc0","cc0 1.0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0","cc by 4.0","cc by 3.0","cc by 2.0"}
     found=[]
     for page in data.get("query",{}).get("pages",{}).values():
         info=(page.get("imageinfo") or [{}])[0]
