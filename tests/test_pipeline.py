@@ -36,6 +36,7 @@ class QueueNarrationTests(unittest.TestCase):
             job_id=job_store.enqueue("Titre","Bonjour","Éco","fr-FR-DeniseNeural",True,"+10%")
             job=job_store.next_job()
             self.assertEqual(job["id"],job_id)
+            self.assertEqual(job["status"],"running")
             self.assertEqual(job["voice_rate"],"+10%")
 
     def test_failed_job_can_be_retried_without_losing_voice_rate(self):
@@ -92,7 +93,7 @@ class QueueNarrationTests(unittest.TestCase):
                 results=list(executor.map(claim,range(4)))
             claimed=[job for job in results if job is not None]
             self.assertEqual(len(claimed),1)
-            self.assertEqual(claimed[0]["status"],"queued")
+            self.assertEqual(claimed[0]["status"],"running")
             self.assertEqual(sum(job["status"]=="running" for job in job_store.jobs()),1)
 
     def test_cancel_only_pending_jobs(self):
