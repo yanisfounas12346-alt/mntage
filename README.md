@@ -142,6 +142,25 @@ avec mise à l'échelle pour 1080×1920 et cache de polices. Cela évite un
 repli silencieux sur une petite police bitmap quand DejaVu est absent.
 La qualité visuelle complète reste à confirmer en regardant un MP4 Windows.
 
+### Optimisation n°2/600 : mouvement du personnage
+
+La séquence d'approche utilise désormais un cycle de marche déterministe :
+lever un pied à la fois, plier le genou de la jambe qui avance, balancer
+les bras en sens opposé, transférer le poids et compenser le rebond du corps
+pour maintenir le pied d'appui à la hauteur du sol. Le décor et la caméra
+restent fixes, et la narration Edge TTS n'est pas modifiée.
+
+Test ciblé :
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_walk_gait
+```
+
+Puis lance l'aperçu animé 8 s via Streamlit pour **observer réellement les
+pas** sur ton Windows. Si le cycle ressemble à du patinage malgré les tests,
+la prochaine correction devra porter sur les positions au sol et la
+synchronisation entre la progression horizontale et les pieds.
+
 ## Pilote local supervisé : essai de 3 requêtes
 
 Le fichier \`tools/pilot_3.py\` fournit une petite interface Windows Tkinter,
