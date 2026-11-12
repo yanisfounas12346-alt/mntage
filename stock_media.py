@@ -234,6 +234,8 @@ def download_commons_scenes(script, limit=8):
     for query in scene_queries(script,limit):
         try:
             candidates=search_commons_videos(query,limit=8)
+            if not candidates and len(query.split())>1:
+                candidates=search_commons_videos(query.split()[0],limit=8)
         except Exception as exc:
             raise RuntimeError("Recherche Wikimedia Commons indisponible : "+str(exc)) from exc
         picked=False
