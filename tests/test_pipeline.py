@@ -85,6 +85,19 @@ class VideoPlanningTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,"trop court"):
                     inspect_source_video(path)
 
+    def test_commons_broadens_empty_search(self):
+        clip={"id":3,"url":"https://example.org/mountain.webm"}
+        def search(query,limit):
+            return [] if query=="mountain landscape" else [clip]
+        with patch("stock_media.scene_queries",return_value=["mountain landscape"]), \
+             patch("stock_media.search_commons_videos",side_effect=search) as search_mock, \
+             patch("stock_media._download",return_value=b"video"), \
+             patch("stock_media._valid_video_payload",return_value=True):
+            found,clips,missing=download_commons_scenes("La montagne.",limit=1)
+        self.assertEqual(found[0]["id"],3)
+        self.assertEqual(search_mock.call_count,2)
+        self.assertEqual(missing,[])
+
     def test_commons_retries_corrupt_clip(self):
         options=[
             {"id":1,"url":"https://example.org/corrupt.webm"},
