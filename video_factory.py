@@ -46,24 +46,26 @@ def _run(args):
         raise RuntimeError("FFmpeg : " + result.stderr[-1400:])
 
 def scene_durations(duration: float, boundaries: list[dict], clip_count: int) -> list[float]:
-    """Choose cuts near spoken-word boundaries instead of equal-duration cuts."""
+    """Keep cuts near speech boundaries, with no very short or giant final scene."""
     if duration <= 0 or clip_count < 1:
         raise ValueError("Durée ou nombre de clips invalide.")
-    target_count = min(24, max(clip_count, round(duration / 4.0)))
-    target_count = min(target_count, max(1,int(duration / 1.5)))
-    if target_count == 1 or not boundaries:
-        return [duration / target_count] * target_count
-    ends = sorted({min(duration, max(0.0, (w["offset"] + w["duration"]) / 10000000))
-                   for w in boundaries})
+    target_count=min(24,max(clip_count,round(duration/4.0)))
+    target_count=min(target_count,max(1,int(duration/1.5)))
+    if target_count==1:
+        return [duration]
+    ends=sorted({min(duration,max(0.0,(w["offset"]+w["duration"])/10000000))
+                 for w in boundaries if w.get("duration",0)>=0})
     cuts=[0.0]
     for i in range(1,target_count):
         ideal=duration*i/target_count
-        candidates=[t for t in ends if t-cuts[-1]>=1.5 and
-                    duration-t>=1.5*(target_count-i)]
-        if not candidates:
-            # Keep the cuts already chosen; do not erase their alignment.
-            return [b-a for a,b in zip(cuts,cuts[1:])] + [duration-cuts[-1]]
-        cuts.append(min(candidates,key=lambda t:abs(t-ideal)))
+        # A narrow window preserves rhythm even if the speech has long pauses.
+        window=min(0.8,duration/target_count*0.25)
+        choices=[t for t in ends if abs(t-ideal)<=window
+                 and t-cuts[-1]>=1.0 and duration-t>=1.0]
+        cut=min(choices,key=lambda t:abs(t-ideal)) if choices else ideal
+        if cut-cuts[-1]<1.0:
+            cut=ideal
+        cuts.append(cut)
     cuts.append(duration)
     return [b-a for a,b in zip(cuts,cuts[1:])]
 
