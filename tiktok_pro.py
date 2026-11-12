@@ -46,17 +46,17 @@ def production_brief(topic: str, keyword: str, style: str = "documentaire ciném
 
 def seo_pack(title: str, script: str, keyword: str = "", science: bool = False) -> str:
     """Produce an editable French publishing pack without inventing facts or trends."""
-    title = re.sub(r"\\s+", " ", title).strip()
-    keyword = re.sub(r"\\s+", " ", keyword).strip() or title
+    title = re.sub(r"\s+", " ", title).strip()
+    keyword = re.sub(r"\s+", " ", keyword).strip() or title
     if not title or not script.strip():
         raise ValueError("Titre et script requis pour le pack SEO.")
     # Use only script text for the description; no invented scientific claim.
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\\s+|\\n+", script) if s.strip()]
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", script) if s.strip()]
     summary = " ".join(sentences[:2])
     if len(summary) > 190:
         summary = summary[:187].rsplit(" ", 1)[0] + "..."
     safe_title = title[:85].rstrip()
-    terms = [t.lower() for t in re.findall(r"[\\wÀ-ÿ]+", keyword, flags=re.UNICODE)
+    terms = [t.lower() for t in re.findall(r"[\wÀ-ÿ]+", keyword, flags=re.UNICODE)
              if len(t) >= 4 and not t.isdigit()]
     hashtags = ["#ScienceWTF", "#Science", "#LeSaviezVous"] if science else ["#CultureG", "#LeSaviezVous", "#Decouverte"]
     for term in terms[:2]:
@@ -76,13 +76,13 @@ def seo_pack(title: str, script: str, keyword: str = "", science: bool = False) 
         "- Adapter le titre et la description après visionnage du MP4 final.",
     ])
     return (
-        "PACK DE PUBLICATION — BROUILLON À RELIRE\\n\\n"
-        f"TITRE\\n{safe_title}\\n\\n"
-        f"MOT-CLÉ CIBLE\\n{keyword}\\n\\n"
-        f"DESCRIPTION\\n{summary}\\n"
-        f"Une découverte étonnante expliquée simplement.\\n\\n"
-        f"HASHTAGS\\n{' '.join(hashtags)}\\n\\n"
-        f"COMMENTAIRE ÉPINGLÉ (SUGGESTION)\\n"
-        "Quel sujet scientifique voudrais-tu voir dans le prochain épisode ?\\n\\n"
-        "VÉRIFICATIONS AVANT PUBLICATION\\n" + "\\n".join(notes) + "\\n"
+        "PACK DE PUBLICATION — BROUILLON À RELIRE\n\n"
+        f"TITRE\n{safe_title}\n\n"
+        f"MOT-CLÉ CIBLE\n{keyword}\n\n"
+        f"DESCRIPTION\n{summary}\n"
+        f"Une découverte étonnante expliquée simplement.\n\n"
+        f"HASHTAGS\n{' '.join(hashtags)}\n\n"
+        f"COMMENTAIRE ÉPINGLÉ (SUGGESTION)\n"
+        "Quel sujet scientifique voudrais-tu voir dans le prochain épisode ?\n\n"
+        "VÉRIFICATIONS AVANT PUBLICATION\n" + "\n".join(notes) + "\n"
     )
