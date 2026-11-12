@@ -27,6 +27,16 @@ jobs:
           ffmpeg -filters | grep -E '(^| )ass '
       - name: Run offline regression and real FFmpeg smoke tests
         run: python -m unittest discover -s tests -v
+      - name: Run checkpoint 10 of 600 on Linux
+        if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint'
+        run: python -m tools.checkpoint --iteration 10 --no-pull
+      - name: Save checkpoint 10 report (Linux)
+        if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint')
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-0010-linux
+          path: outputs/checkpoints/cycle_0010*
+          if-no-files-found: ignore
       - name: Upload test failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -56,3 +66,14 @@ jobs:
       - name: Run the same Windows verification as local users
         shell: pwsh
         run: .\verify_windows.ps1
+      - name: Run checkpoint 10 of 600 on Windows
+        if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint'
+        shell: pwsh
+        run: & .\.venv\Scripts\python.exe -m tools.checkpoint --iteration 10 --no-pull
+      - name: Save checkpoint 10 report (Windows)
+        if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint')
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-0010-windows
+          path: outputs/checkpoints/cycle_0010*
+          if-no-files-found: ignore
