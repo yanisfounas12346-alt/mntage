@@ -63,6 +63,13 @@ class VideoPlanningTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         duration_seconds(Path("voice.mp3"))
 
+    def test_corrupt_image_rejected_before_voice(self):
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Image 1 invalide"):
+                make_video("test","Bonjour",[b"not an image"])
+        voice.assert_not_called()
+
     def test_empty_uploaded_media_rejected_before_voice(self):
         with patch("video_factory.require_ffmpeg"), \
              patch("video_factory.synthesize") as voice:
