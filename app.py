@@ -38,7 +38,7 @@ with tab_create:
     if science_mode:
         st.caption("Studio animé 2D original disponible pour le miroir ; autres sujets : dessins locaux ou fal.ai. Le script reste à vérifier scientifiquement.")
         if studio_selected:
-            st.info("NOUVEAU : cadrages courts, gestes (marche, observation, surprise, pointage), sourcils, clignements, bouche animée et reflet déformable. Caméra stable. Synchronisation labiale approximative.")
+            st.info("NOUVEAU : accroche visuelle dès la première seconde, cinq plans en aperçu, gestes, sourcils, clignements, bouche animée et reflet déformable. Caméra stable. Synchronisation labiale approximative.")
         if science_topic != "Aucun" and st.button("✍️ Charger un exemple de script"):
             st.session_state["science_script"]=sample_script(science_topic)
     title=st.text_input("Titre","Mon premier Short")
@@ -129,7 +129,7 @@ with tab_create:
             return download_images(items)
         return script_to_images(script,title)
     if studio_selected:
-        if st.button("👁️ Tester 3 plans animés en 8 secondes (gratuit)",use_container_width=True):
+        if st.button("👁️ Tester 5 plans animés en 8 secondes (gratuit)",use_container_width=True):
             try:
                 if not is_mirror_subject(science_subject, script):
                     raise ValueError("Le pilote animé prend en charge uniquement le miroir. Choisis ce sujet pour cet aperçu.")
