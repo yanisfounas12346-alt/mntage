@@ -54,6 +54,8 @@ class QueueNarrationTests(unittest.TestCase):
             first=job_store.enqueue("Premier","Bonjour","Éco","fr-FR-DeniseNeural",True)
             second=job_store.enqueue("Deuxième","Salut","Éco","fr-FR-DeniseNeural",True)
             self.assertEqual(job_store.next_job()["id"],first)
+            self.assertIsNone(job_store.next_job())  # first render still active
+            job_store.finish(first,video="first.mp4")
             self.assertEqual(job_store.next_job()["id"],second)
             self.assertIsNone(job_store.next_job())
 
