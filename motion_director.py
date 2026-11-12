@@ -25,12 +25,43 @@ def _blink(t,offset=0.):
 def _circle(p,x,y,r,color,width=3):
     p.ellipse((x-r,y-r,x+r,y+r),outline=color,width=width)
 
+def walk_pose(t):
+    """Deterministic two-foot walk cycle at 6.2 rad/s.
+
+    The front leg swings and lifts while the opposite foot remains planted;
+    knees bend during the airborne half-stride. Values use 540x960 stage
+    coordinates so they scale together with the character. The path is smooth
+    in time, including the foot landing (no teleportation between frames).
+    """
+    phase=t*6.2
+    stride=math.sin(phase)
+    # Each stance has one weight transfer; the body oscillates twice per cycle.
+    body_bob=2.8*(1-math.cos(phase*2))*.5
+    body_sway=2.8*math.sin(phase)
+    legs=[]
+    for side, swing in ((-1,stride),(1,-stride)):
+        # Lift only on the forward swing. Power 2 softens the landing.
+        lift=22*max(0.0,swing)**2
+        reach=23*swing
+        hip=(side*9,59)
+        knee=(side*22+reach*.44+side*lift*.10,111-lift*.40)
+        foot=(side*34+reach,159-lift)
+        legs.append((hip,knee,foot))
+    return body_sway,body_bob,tuple(legs),stride
+
+
 def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,progress=0.):
     """Articulated original character: brows, blinks, four mouth shapes and actions."""
     talk=min(1.,max(0.,mouth))
     shock=1. if feeling=="surprised" else 0.
     x+=(-8 if not mirror else 8)*shock*math.sin(min(1.,progress*2.)*math.pi/2)*s
-    y+=2.5*math.sin(t*2.5)*s
+    walking=action=="walk"
+    if walking:
+        sway,bob,walk_legs,stride=walk_pose(t)
+        x+=sway*s
+        y+=bob*s
+    else:
+        y+=2.5*math.sin(t*2.5)*s
     def pt(a,b):
         return (x+a*s,y+b*s)
     def ellipse(l,top,r,bottom,color,outline=None,width=2):
@@ -38,14 +69,22 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
     def stroke(coords,color,width):
         p.line([pt(a,b) for a,b in coords],color,width*s)
     ellipse(-56,166,60,180,(7,18,30))
-    step=math.sin(t*6.2)*22 if action=="walk" else 3*math.sin(t*1.8)
-    for sign,swing in ((-1,step),(1,-step)):
-        knee=(sign*22+swing*.4,114)
-        foot=(sign*34+swing,159)
-        stroke([(0,59),knee,foot],INK,18)
-        stroke([(0,59),knee,foot],WHITE,11)
-        stroke([foot,(foot[0]+15*sign,159)],INK,7)
-        stroke([foot,(foot[0]+15*sign,159)],YELLOW if sign==1 else WHITE,3)
+    step=3*math.sin(t*1.8)
+    for index,sign in enumerate((-1,1)):
+        if walking:
+            hip,knee,foot=walk_legs[index]
+        else:
+            hip=(0,59)
+            swing=step if sign==-1 else -step
+            knee=(sign*22+swing*.4,114)
+            foot=(sign*34+swing,159)
+        stroke([hip,knee,foot],INK,18)
+        stroke([hip,knee,foot],WHITE,11)
+        # The shoe follows its foot off the ground; previously it stayed
+        # glued to y=159 while the leg moved independently.
+        toe=(foot[0]+15*sign,foot[1])
+        stroke([foot,toe],INK,7)
+        stroke([foot,toe],YELLOW if sign==1 else WHITE,3)
     if not mirror:
         p.rect((*pt(19,-33),*pt(78,78)),YELLOW,radius=13*s,outline=INK,width=5*s)
         p.line([pt(54,-22),pt(54,24)],(248,229,152),3*s)
@@ -63,8 +102,11 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         left=[(-7,-20),(-54,-56),(-70,-92)]
         right=[(7,-20),(50,-67),(78,-111)]
     elif action=="walk":
-        left=[(-6,-20),(-37,-9+step*.3),(-55,29+step)]
-        right=[(6,-20),(39,-4-step*.3),(55,26-step)]
+        # Swing arms against their respective legs, not in the same direction.
+        left=[(-6,-20),(-37-9*stride,-8),
+              (-57-18*stride,25-5*max(0.,-stride))]
+        right=[(6,-20),(37+9*stride,-8),
+               (57+18*stride,25-5*max(0.,stride))]
     else:
         wobble=math.sin(t*4)*(9 if talk>.1 else 3)
         left=[(-6,-20),(-45,-16),(-64,9+wobble)]
