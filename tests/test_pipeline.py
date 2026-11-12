@@ -189,6 +189,16 @@ class VideoPlanningTests(unittest.TestCase):
                         with self.assertRaises(RuntimeError):
                             validate_output(path,5.0)
 
+    def test_source_duration_falls_back_to_container(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"source.webm"
+            path.write_bytes(b"video")
+            metadata={"streams":[{"width":1280,"height":720,"duration":"N/A"}],
+                      "format":{"duration":"3.25"}}
+            with patch("video_factory.subprocess.run",return_value=SimpleNamespace(
+                    returncode=0,stdout=json.dumps(metadata),stderr="")):
+                self.assertAlmostEqual(inspect_source_video(path)["duration"],3.25)
+
     def test_source_video_quality_gate(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"clip.webm"
