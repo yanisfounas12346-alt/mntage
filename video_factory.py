@@ -58,10 +58,23 @@ def validate_music_audio(path: Path) -> None:
     if streams[0].get("codec_name") != "mp3":
         raise ValueError("La musique doit être un véritable fichier MP3.")
 
+def prepare_narration(script: str) -> str:
+    """Make punctuation-driven TTS pauses clearer without changing spoken words.
+
+    Edge TTS does not expose a portable pause control through its plain-text API.
+    Preserve vocabulary and word order so caption boundaries still match speech.
+    """
+    text = re.sub(r"[ \\t]+", " ", script.strip())
+    text = re.sub(r"\\s*\\n+\\s*", ". ", text)
+    text = re.sub(r"\\s+([,;:.!?])", r"\\1", text)
+    text = re.sub(r"([.!?])(?=[^\\s.!?])", r"\\1 ", text)
+    text = re.sub(r"([,;:])(?=[^\\s])", r"\\1 ", text)
+    return text.strip()
+
 async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5%"):
     boundaries=[]
     with destination.open("wb") as audio:
-        async for chunk in edge_tts.Communicate(script, voice=voice, rate=rate).stream():
+        async for chunk in edge_tts.Communicate(prepare_narration(script), voice=voice, rate=rate).stream():
             if chunk["type"]=="audio":
                 audio.write(chunk["data"])
             elif chunk["type"]=="WordBoundary":
