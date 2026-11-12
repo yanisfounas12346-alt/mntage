@@ -113,6 +113,17 @@ def scene_durations(duration: float, boundaries: list[dict], clip_count: int) ->
     cuts.append(duration)
     return [b-a for a,b in zip(cuts,cuts[1:])]
 
+def scene_source_index(scene_index: int, scene_count: int, source_count: int) -> int:
+    """Keep storyboard images in narrative order when creating extra fast cuts.
+
+    Reusing an image in adjacent shots is less confusing than cycling back
+    to the opening image halfway through the story.
+    """
+    if scene_count < 1 or source_count < 1 or not 0 <= scene_index < scene_count:
+        raise ValueError("Index de scène invalide.")
+    return min(source_count - 1, scene_index * source_count // scene_count)
+
+
 def validate_output(path: Path, expected_duration: float) -> None:
     """Reject missing, truncated, or incorrectly sized exports."""
     import json
@@ -280,10 +291,11 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             scene_count = len(durations)
             clips = []
             for idx in range(scene_count):
-                data = (video_bytes if video_bytes else image_bytes)[idx % count]
+                source_index = scene_source_index(idx, scene_count, count) if dynamic else idx % count
+                data = (video_bytes if video_bytes else image_bytes)[source_index]
                 scene_duration = durations[idx]
                 if video_bytes:
-                    source = source_paths[idx % count]
+                    source = source_paths[source_index]
                     clip = work / f"clip_{idx:03d}.mp4"
                     # Repeat short source clips if needed, discard their original audio.
                     _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
