@@ -7,7 +7,8 @@ la **première réévaluation critique à 100**. Optimisations #1 et #2/600 pré
 sur la branche principale, #3/600 en revue (CI Linux et Windows réussie),
 et #4/600 proposée sur une branche dépendant de #3 ;
 #5/600 non documentée, #6/600 en revue (CI Linux et Windows réussie),
-#7/600 proposée sur une branche dépendant de #6 ;
+#7/600 en revue (CI Linux/Windows réussie),
+#8/600 proposée sur une branche dépendant de #7 ;
 **contrôle visuel Windows des vidéos à effectuer** : statuts partiels.
 Le compteur persistant du PC reste indépendant et ne s'incrémente qu'après
 confirmation via `tools/session_handoff.py`. Les anciens échanges ne sont pas
@@ -35,7 +36,8 @@ reconstitués artificiellement.
 | 3 | 2026-11-12 | Glissement horizontal du pied d'appui lié au cycle de marche | `f9a8464`, `01a94a1`, `86afb9a` (branche `optimization-003-lock-stance-foot`) | CI Linux/Windows réussie après installation explicite de FFmpeg sur Ubuntu ; **contrôle visuel local à confirmer** | Partielle |
 | 4 | 2026-11-12 | Le pied posé se déplace avec la translation du personnage dans le décor | `f45002c`, `e432ea4`, `083e764` (branche `optimization-004-world-foot-plant`, dépend de #3) | CI Linux/Windows : 142 tests réussis ; **validation visuelle locale en attente** | Partielle |
 | 6 | 2026-11-12 | Flexions des genoux géométriquement incohérentes pendant la marche | `d528cad`, `97d506e` (branche `optimization-006-two-bone-knees`, dépend de #4) | CI Linux/Windows : 147 tests réussis ; **contrôle visuel local à confirmer** | Partielle |
-| 7 | 2026-11-12 | Chaussures trop rigides et horizontales pendant la phase aérienne du pas | `2a7b67b`, `a651a2c` (branche `optimization-007-ankle-foot-roll`, dépend de #6) | Relevé progressif de l'avant-pied sans déplacer l'appui au sol ; 5 tests sur le pivot, la continuité, la hauteur et le rendu ; **CI et contrôle visuel à confirmer** | Partielle |
+| 7 | 2026-11-12 | Chaussures trop rigides et horizontales pendant la phase aérienne du pas | `2a7b67b`, `a651a2c` (branche `optimization-007-ankle-foot-roll`, dépend de #6) | 152 tests passés sur Linux et Windows ; **validation visuelle à confirmer** | Partielle |
+| 8 | 2026-11-12 | Balancement des bras raide avec longueur variable des segments | `1549cbb`, `b876e4e` (branche `optimization-008-articulated-arm-swing`, dépend de #7) | Cinématique des deux bras à longueurs fixes, mouvement opposé et décalage de phase ; 7 tests ciblés ; **CI et validation visuelle à confirmer** | Partielle |
 
 ## État de référence au démarrage (à vérifier, pas un score de performance)
 
