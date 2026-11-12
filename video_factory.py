@@ -175,6 +175,45 @@ def inspect_source_video(path: Path) -> dict:
         raise RuntimeError("Clip source trop court ou sans durée détectable.")
     return {"width":width,"height":height,"duration":duration}
 
+
+def _mascot_overlay(destination: Path, pose: int) -> None:
+    """Draw a small original anti-aliased transparent mascot, independently of the camera."""
+    from PIL import ImageDraw
+    size = (320, 420)
+    scale = 3
+    im = Image.new("RGBA", (size[0]*scale, size[1]*scale), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    def pt(*coords): return tuple(int(v*scale) for v in coords)
+    white = (248, 250, 252, 255)
+    yellow = (255, 212, 71, 255)
+    navy = (16, 24, 39, 255)
+    turquoise = (0, 217, 192, 255)
+    # Backpack behind the body.
+    d.rounded_rectangle(pt(177, 184, 250, 285), radius=28*scale, fill=yellow, outline=navy, width=7*scale)
+    d.line(pt(157, 192, 157, 306), fill=navy, width=29*scale)
+    d.line(pt(157, 192, 157, 306), fill=white, width=17*scale)
+    if pose % 3 == 0:
+        arms = [(157, 220, 74, 156), (157, 220, 249, 132)]
+    elif pose % 3 == 1:
+        arms = [(157, 220, 62, 265), (157, 220, 257, 168)]
+    else:
+        arms = [(157, 220, 70, 174), (157, 220, 247, 278)]
+    for a in arms:
+        d.line(pt(*a), fill=navy, width=27*scale)
+        d.line(pt(*a), fill=white, width=16*scale)
+    for leg in [(157, 304, 91, 387), (157, 304, 224, 387)]:
+        d.line(pt(*leg), fill=navy, width=29*scale)
+        d.line(pt(*leg), fill=white, width=17*scale)
+    d.ellipse(pt(91, 36, 222, 168), fill=white, outline=navy, width=8*scale)
+    for eye_x in (131, 181):
+        d.ellipse(pt(eye_x-8, 88, eye_x+8, 106), fill=navy)
+    if pose % 3 == 2:
+        d.ellipse(pt(145, 117, 169, 145), fill=navy)
+    else:
+        d.arc(pt(135, 113, 179, 145), 5, 175, fill=navy, width=5*scale)
+    d.ellipse(pt(240, 90, 267, 117), fill=turquoise)
+    im.resize(size, Image.Resampling.LANCZOS).save(destination)
+
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
@@ -269,9 +308,27 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 # Older non-dynamic exports retain their subtle Ken Burns movement.
                 zoom = "1" if dynamic else ("min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))")
                 x = "0" if dynamic else ("iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)")
-                _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
-                      "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
-                      "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
+                if dynamic:
+                    # A transparent character bobs independently while the background stays still.
+                    mascot = work / f"mascot_{idx:03d}.png"
+                    _mascot_overlay(mascot, idx)
+                    side_x = "45" if idx % 2 == 0 else "W-w-45"
+                    # Overlay output timestamps start at zero for each scene.
+                    filter_graph = (
+                        "[0:v]fps=25,scale=1080:1920,setsar=1[bg];"
+                        f"[bg][1:v]overlay=x={side_x}:"
+                        "y='1030+18*sin(4*t)':eval=frame:shortest=1,"
+                        "format=yuv420p[v]"
+                    )
+                    _run(["ffmpeg","-y","-loglevel","error","-loop","1","-framerate","25",
+                          "-i",str(img),"-loop","1","-framerate","25","-i",str(mascot),
+                          "-filter_complex",filter_graph,"-map","[v]",
+                          "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast",
+                          "-crf","27",str(clip)])
+                else:
+                    _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
+                          "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
+                          "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
                 clips.append(clip)
             concat = work / "clips.txt"
             # Relative paths avoid Windows drive-letter escaping in FFmpeg concat lists.
