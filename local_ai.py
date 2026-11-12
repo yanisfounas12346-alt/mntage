@@ -42,7 +42,9 @@ def generate_images(prompts: list[str], *, backend: str = "cpu", steps: int = 12
         raise RuntimeError("Configure MNTAGE_SD_CLI et MNTAGE_SD_MODEL vers des fichiers existants.")
     if backend not in {"cpu", "auto", "vulkan0"}:
         raise ValueError("Backend non pris en charge.")
-    if not 1 <= len(prompts) <= 12:\n        raise ValueError("Entre 1 et 12 scènes IA sont nécessaires.")\n    images = []
+    if not 1 <= len(prompts) <= 12:
+        raise ValueError("Entre 1 et 12 scènes IA sont nécessaires.")
+    images = []
     with tempfile.TemporaryDirectory() as tmp:
         for index, prompt in enumerate(prompts):
             out = Path(tmp) / f"scene_{index}.png"
