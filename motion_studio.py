@@ -106,7 +106,7 @@ def plan_mirror_scenes(script: str, duration: float, boundaries: list[dict] | No
         for part in range(shot_count):
             a = beat.start + (beat.end - beat.start) * part / shot_count
             b = beat.start + (beat.end - beat.start) * (part + 1) / shot_count
-            shots.append(MotionScene(beat.kind, a, b, len(shots) % 4, part/shot_count, (part+1)/shot_count))
+            shots.append(MotionScene(beat.kind, a, b, len(shots) % 6, part/shot_count, (part+1)/shot_count))
     return shots
 
 
@@ -333,11 +333,11 @@ def render_mirror_preview(destination: Path, seconds: float = 8.0) -> Path:
     if seconds <= 0 or seconds > 15:
         raise ValueError("L'aperçu doit durer entre 0 et 15 secondes.")
     # Five purposeful edits: visual hook, entry, stare, surprise, brain reveal.
-    shots = [MotionScene("distort",0.0,seconds*.15,2,.75,.96),
+    shots = [MotionScene("distort",0.0,seconds*.15,4,.75,.96),
              MotionScene("approach",seconds*.15,seconds*.30,0),
              MotionScene("stare",seconds*.30,seconds*.50,3),
-             MotionScene("distort",seconds*.50,seconds*.70,1),
-             MotionScene("brain",seconds*.70,seconds,2)]
+             MotionScene("distort",seconds*.50,seconds*.70,5,.2,.8),
+             MotionScene("brain",seconds*.70,seconds,4)]
     with tempfile.TemporaryDirectory() as folder:
         files=[]
         for i,shot in enumerate(shots):
