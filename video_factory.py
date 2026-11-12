@@ -25,7 +25,7 @@ def require_ffmpeg():
 def duration_seconds(audio: Path) -> float:
     r = subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
                         "-of","default=noprint_wrappers=1:nokey=1",str(audio)],
-                       capture_output=True,text=True,check=True)
+                       capture_output=True,text=True,check=True,timeout=30)
     return float(r.stdout.strip())
 
 async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5%"):
@@ -40,8 +40,12 @@ async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5
         raise RuntimeError("La synthèse vocale n'a produit aucun audio.")
     return boundaries
 
-def _run(args):
-    result = subprocess.run(args, capture_output=True, text=True)
+def _run(args, timeout=1800):
+    """Bound stalled FFmpeg processes and provide actionable errors."""
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"FFmpeg bloqué : délai de {timeout} secondes dépassé.") from exc
     if result.returncode:
         raise RuntimeError("FFmpeg : " + result.stderr[-1400:])
 
@@ -78,7 +82,7 @@ def validate_output(path: Path, expected_duration: float) -> None:
         ["ffprobe","-v","error","-show_entries",
          "format=duration:stream=codec_type,width,height",
          "-of","json",str(path)],
-        capture_output=True,text=True)
+        capture_output=True,text=True,timeout=30)
     if result.returncode:
         raise RuntimeError("Impossible de vérifier le MP4 : "+result.stderr[-500:])
     data=json.loads(result.stdout)
@@ -99,7 +103,7 @@ def inspect_source_video(path: Path) -> dict:
     result=subprocess.run(
         ["ffprobe","-v","error","-select_streams","v:0",
          "-show_entries","stream=width,height,duration:format=duration",
-         "-of","json",str(path)],capture_output=True,text=True)
+         "-of","json",str(path)],capture_output=True,text=True,timeout=30)
     if result.returncode:
         raise RuntimeError("Clip source illisible : "+result.stderr[-300:])
     try:
@@ -209,7 +213,10 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             cmd += ["-t",str(duration),"-c:v","libx264","-preset","veryfast",
                     "-crf","22","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
             # The subtitle filter resolves its path from the process cwd.
-            result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True)
+            try:
+                result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True,timeout=1800)
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError("FFmpeg (sous-titres/musique) bloqué plus de 30 minutes.") from exc
             if result.returncode:
                 raise RuntimeError("FFmpeg (sous-titres/musique) : "+result.stderr[-1400:])
         if captions:
