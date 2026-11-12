@@ -8,6 +8,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from contextlib import redirect_stdout
+import sys
 
 from tools import checkpoint as gate
 
@@ -45,7 +47,9 @@ def decide(completed: int, *, pull: bool = True) -> dict:
         return {"status": "CONTINUE", "iteration": completed,
                 "prompt": CONTINUE_PROMPT, "allow_new_optimization": True}
 
-    ok = gate.checkpoint(completed, pull=pull)
+    # Keep stdout strictly JSON so the browser controller can parse it.
+    with redirect_stdout(sys.stderr):
+        ok = gate.checkpoint(completed, pull=pull)
     prompt_path = gate.OUT / f"cycle_{completed:04d}_next_prompt.txt"
     prompt = prompt_path.read_text(encoding="utf-8")
     return {
