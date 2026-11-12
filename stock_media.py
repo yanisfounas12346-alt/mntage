@@ -11,16 +11,41 @@ def _api(endpoint,params):
         return json.load(response)
 
 def scene_queries(script,limit=8):
-    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
-    stop={"pour","dans","avec","sans","cette","comme","quand","alors","mais","plus","tout","tous","elles","nous","vous","leur","être","avoir","est","une","des","les","que","qui","sur","par","pas","son","ses","aux","ces","cela","c'est","d'un","d'une","dans","même","encore","peut","déjà","fait","très","vois","sont","dont","cette"}
+    """Turn French narration into concrete English footage searches."""
+    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\\s+|\\n+",script) if s.strip()]
+    topics=[
+        (("forêt","arbre","bois","jungle"),"forest trees"),
+        (("océan","mer","vague","plage","eau"),"ocean waves"),
+        (("espace","étoile","galaxie","planète","univers"),"outer space stars"),
+        (("cerveau","neurone","mémoire","pensée"),"human brain science"),
+        (("yeux","oeil","œil","regard","vision"),"human eye closeup"),
+        (("ville","rue","immeuble","bâtiment"),"city streets"),
+        (("montagne","sommet","alpes"),"mountain landscape"),
+        (("animal","chien","chat","oiseau"),"wildlife animals"),
+        (("soleil","lumière","coucher"),"sunset sky"),
+        (("pluie","orage","tempête"),"rain storm"),
+        (("voiture","route","conduite"),"cars road"),
+        (("ordinateur","technologie","internet","robot"),"computer technology"),
+        (("corps","santé","médecin","sang"),"human body medicine"),
+        (("histoire","ancien","siècle","château"),"historic architecture"),
+        (("nuage","ciel"),"clouds sky"),
+    ]
     queries=[]
     for sentence in sentences[:limit]:
-        words=[w.lower() for w in re.findall(r"[\wÀ-ÿ'-]+",sentence) if len(w)>3 and w.lower() not in stop]
-        concepts=[(("nuage","ciel","visage"),"face shaped clouds sky"),(("cerveau","neurone"),"human brain science"),(("illusion","optique"),"optical illusion"),(("yeux","regard"),"close up human eye"),(("nature","forêt"),"cinematic forest"),(("espace","planète"),"space galaxy"),(("océan","mer"),"ocean waves"),(("ville","rue"),"city street")]
-        query=next((english for keywords,english in concepts if any(k in sentence.lower() for k in keywords)),None)
-        if not query:query=" ".join(words[:3]) or "cinematic nature"
-        queries.append(query)
-    return queries or ["cinematic nature"]
+        normalized=sentence.casefold()
+        matches=[(normalized.find(word),query) for words,query in topics
+                 for word in words if word in normalized]
+        if matches:
+            queries.append(min(matches,key=lambda item:item[0])[1])
+        else:
+            words=re.findall(r"[a-zA-ZÀ-ÿ]+",normalized)
+            # Commons indexes French descriptions too: do not invent unrelated stock topics.
+            stop={"avec","pour","dans","cette","comme","mais","plus","nous","vous",
+                  "elles","sont","être","avoir","cest","tout","tous","leurs","alors",
+                  "cette","notre","votre","cela","depuis","quand","parce","aussi"}
+            keywords=[w for w in words if len(w)>=5 and w not in stop]
+            queries.append(" ".join(keywords[:3]) or "nature")
+    return queries or ["nature"]
 
 def search_videos(query,limit=3):
     data=_api("videos/search",{"query":query[:100],"per_page":min(10,max(1,limit)),"orientation":"portrait"})
