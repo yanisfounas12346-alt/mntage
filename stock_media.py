@@ -210,7 +210,13 @@ def search_commons_videos(query, limit=6):
         "stars":{"star","night","galaxy"},
         "rain":{"rainfall","storm","raining"},
         "computer":{"laptop","pc","technology","keyboard"},
-        "wildlife":{"animals","animal","nature"},
+        "wildlife":{"animals","animal","nature","horse","horses","bird","birds","dog","dogs","cat","cats"},
+        "animals":{"animal","wildlife","horse","horses","bird","birds","dog","dogs","cat","cats"},
+        "brain":{"neuron","neurons","neural","anatomy","neuroscience"},
+        "eye":{"eyes","vision","eyeball","iris","pupil"},
+        "sunset":{"sunrise","dusk","twilight","sun"},
+        "historic":{"historical","history","ancient","medieval","castle"},
+        "architecture":{"building","buildings","monument","monuments","castle"},
     }
     def score(item):
         title_tokens=set(re.findall(r"[a-z0-9]+",item["title"].casefold()))
