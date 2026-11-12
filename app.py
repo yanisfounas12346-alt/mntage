@@ -15,16 +15,16 @@ from stock_media import search_images, download_images, search_videos, download_
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
-.stApp{background:radial-gradient(circle at 50% 0%,#39141e,#130d11 48%,#0d0b0d);color:#f9f5f6}
+.stApp{background:radial-gradient(circle at 50% 0%,#19283a,#101827 55%,#0b111d);color:#f8fafc}
 .block-container{max-width:850px;padding-top:2rem}
 header[data-testid="stHeader"]{background:transparent}
 h1,h2,h3{color:#fff!important}
-.stButton>button[kind="primary"]{background:linear-gradient(110deg,#f33150,#b61637);border:0;border-radius:12px;min-height:3rem;font-weight:750}
-.stButton>button[kind="primary"]:hover{background:#f34a66}
-div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea{background:#23191e;color:white;border:1px solid #61303d;border-radius:12px}
-.hero{background:linear-gradient(120deg,#371722,#1c1117);border:1px solid #763041;border-radius:18px;padding:25px;margin-bottom:20px}
-.hero b{font-size:1.8rem;color:white}.hero small{color:#ff8299;letter-spacing:.12em}.hero p{color:#d7c0c8}
-</style>""",unsafe_allow_html=True)
+.stButton>button[kind="primary"]{background:linear-gradient(110deg,#00b9a9,#087e90);border:0;border-radius:12px;min-height:3rem;font-weight:750}
+.stButton>button[kind="primary"]:hover{background:#00d9c0}
+div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea{background:#192638;color:#f8fafc;border:1px solid #456174;border-radius:12px}
+.hero{background:linear-gradient(120deg,#1a3444,#111d30);border:1px solid #247e86;border-radius:18px;padding:25px;margin-bottom:20px}
+.hero b{font-size:1.8rem;color:white}.hero small{color:#ffd447;letter-spacing:.12em}.hero p{color:#dce9ee}
+div[data-testid="stWidgetLabel"] p, div[data-testid="stRadio"] label p, div[data-testid="stCheckbox"] label p, div[data-testid="stSelectbox"] label p{color:#f8fafc!important}\n.stCaptionContainer,div[data-testid="stMarkdownContainer"] small{color:#b9d2db!important}\n</style>""",unsafe_allow_html=True)
 st.markdown('<div class="hero"><small>MNTAGE / STUDIO IA</small><br><b>Ton script. Ta vidéo. Un clic.</b><p>Studio local rouge et noir · voix · sous-titres · montage · historique</p></div>',unsafe_allow_html=True)
 
 tab_create,tab_queue,tab_stats=st.tabs(["🎬 Créer","📂 File & historique","📊 Résultats"])
