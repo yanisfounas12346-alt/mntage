@@ -6,7 +6,7 @@ from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
 from job_store import enqueue, jobs, next_job, finish, update_metrics, set_youtube
-from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes
+from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
 st.markdown("""
@@ -32,6 +32,8 @@ with tab_create:
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
         modes=[]
+        if os.environ.get("PIXABAY_API_KEY"):
+            modes.append("Vidéos Pixabay — vrais clips (gratuit)")
         if os.environ.get("PEXELS_API_KEY"):
             modes.append("Vidéos Pexels — vrais clips (recommandé)")
         modes.append("Éco — fonds animés abstraits (démonstration)")
@@ -42,7 +44,7 @@ with tab_create:
         captions=st.checkbox("Sous-titres incrustés (timing estimé)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
-        st.caption("⚠️ Le mode Éco ne produit pas de vrais sujets vidéo. Pour de véritables clips, configure PEXELS_API_KEY et choisis Vidéos Pexels.")
+        st.caption("⚠️ Le mode Éco ne produit pas de vrais sujets vidéo. Pour de véritables clips, configure PIXABAY_API_KEY et choisis Vidéos Pixabay.")
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
         if images:return [i.getvalue() for i in images]
@@ -62,7 +64,7 @@ with tab_create:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
                     if mode.startswith("Vidéos"):
-                        found,missing=select_video_scenes(script,limit=8)
+                        found,missing=(select_pixabay_scenes(script,limit=8) if "Pixabay" in mode else select_video_scenes(script,limit=8))
                         if missing:st.warning("Certaines scènes n'ont pas de clip correspondant : "+", ".join(missing))
                         clips=download_videos(found)
                         st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
@@ -93,7 +95,7 @@ with tab_queue:
                 with st.spinner(f"Génération : {job['title']}"):
                     clips=None
                     if job["mode"].startswith("Vidéos"):
-                        found,missing=select_video_scenes(job["script"],limit=8)
+                        found,missing=(select_pixabay_scenes(job["script"],limit=8) if "Pixabay" in job["mode"] else select_video_scenes(job["script"],limit=8))
                         if missing:st.warning("Scènes sans clip : "+", ".join(missing))
                         clips=download_videos(found)
                         pics=[]
