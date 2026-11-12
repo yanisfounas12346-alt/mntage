@@ -161,6 +161,26 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertEqual(len(results),1)
         self.assertEqual(results[0]["id"],2)
 
+    def test_invalid_video_durations_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"clip.mp4"
+            path.write_bytes(b"x"*2048)
+            for invalid in ("nan","inf","-inf","invalid"):
+                with self.subTest(value=invalid):
+                    source={"streams":[{"width":1280,"height":720}],
+                            "format":{"duration":invalid}}
+                    with patch("video_factory.subprocess.run",return_value=SimpleNamespace(
+                            returncode=0,stdout=json.dumps(source),stderr="")):
+                        with self.assertRaises(RuntimeError):
+                            inspect_source_video(path)
+                    exported={"streams":[{"codec_type":"video","width":1080,"height":1920},
+                                         {"codec_type":"audio"}],
+                              "format":{"duration":invalid}}
+                    with patch("video_factory.subprocess.run",return_value=SimpleNamespace(
+                            returncode=0,stdout=json.dumps(exported),stderr="")):
+                        with self.assertRaises(RuntimeError):
+                            validate_output(path,5.0)
+
     def test_source_video_quality_gate(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"clip.webm"
