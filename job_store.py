@@ -48,6 +48,14 @@ def finish(job_id, video=None, error=None):
         con.execute("UPDATE jobs SET status=?,video=?,error=? WHERE id=?",
                     ("failed" if error else "done",str(video) if video else None,error,job_id))
 
+def retry_failed(job_id):
+    """Return only a failed task to the queue; preserve its script and settings."""
+    with connect() as con:
+        result=con.execute(
+            "UPDATE jobs SET status='queued',error=NULL,video=NULL "
+            "WHERE id=? AND status='failed'",(job_id,))
+        return result.rowcount == 1
+
 def update_metrics(job_id, views, revenue, costs):
     with connect() as con:
         con.execute("UPDATE jobs SET views=?,revenue=?,costs=? WHERE id=?",
