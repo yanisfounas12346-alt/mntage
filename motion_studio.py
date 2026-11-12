@@ -12,6 +12,7 @@ import re
 import subprocess
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+from speech_motion import SpeechMotion
 
 NAVY = (13, 23, 38)
 PANEL = (22, 42, 61)
@@ -273,15 +274,17 @@ def _brain(p, cx=270, cy=370, t=0.0, scale=1.0):
     p.line([(cx,cy-110*scale),(cx,cy+114*scale)], (7,24,38), 8*scale)
 
 
-def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0, beat_progress=None):
+def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0, beat_progress=None, absolute_seconds=None):
     """Draw an original scene composed of background, actions and optical effect."""
     from motion_director import draw_professional_frame
-    return draw_professional_frame(base, kind, shot, progress, seconds, mouth, beat_progress=beat_progress)
+    return draw_professional_frame(base, kind, shot, progress, seconds, mouth,
+                                   beat_progress=beat_progress, absolute_seconds=absolute_seconds)
 
 
 def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
                         width: int = 1080, height: int = 1920,
-                        boundaries: list[dict] | None = None) -> None:
+                        boundaries: list[dict] | None = None,
+                        speech_motion: SpeechMotion | None = None) -> None:
     """Stream native HD frames to FFmpeg without storing thousands of PNGs."""
     if width * BASE_H != height * BASE_W or fps < 1 or scene.end <= scene.start:
         raise ValueError("Format ou durée du plan animé invalide.")
@@ -297,10 +300,12 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
         for i in range(frames):
             progress=i/max(frames-1,1)
             absolute_seconds=scene.start + i/fps
-            mouth=mouth_open_at(absolute_seconds,boundaries)
+            mouth=(speech_motion.at(absolute_seconds) if speech_motion is not None
+                   else mouth_open_at(absolute_seconds,boundaries))
             arc=scene.beat_from+(scene.beat_to-scene.beat_from)*progress
             image=_draw_frame((width,height),scene.kind,progress,
-                              scene.end-scene.start,base,shot=scene.shot,mouth=mouth,beat_progress=arc)
+                              scene.end-scene.start,base,shot=scene.shot,mouth=mouth,
+                              beat_progress=arc,absolute_seconds=absolute_seconds)
             proc.stdin.write(image.tobytes())
         proc.stdin.close()
         assert proc.stderr is not None
