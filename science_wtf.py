@@ -122,12 +122,23 @@ def script_scene_prompts(script: str, subject: str, count: int = 8) -> list[str]
     for i, sentence in enumerate(sentences):
         index = min(i * len(chunks) // len(sentences), len(chunks)-1)
         chunks[index].append(sentence)
-    direction = ("Original vertical 9:16 premium educational 2D cartoon illustration, "
-                 "dark midnight blue with teal and yellow accents, cinematic lighting, "
-                 "one recurring simple white stick-figure scientist mascot with a small "
-                 "yellow explorer backpack, expressive gestures, scientifically plausible "
-                 "visual storytelling, no text, no letters, no logo, no watermark, "
-                 "leave bottom 30 percent uncluttered for subtitles. ")
+    direction = (
+        "Vertical 9:16, ultra clean premium 2D vector cartoon motion-design keyframe, "
+        "crisp smooth anti-aliased curves, polished rounded shapes, clean cel shading, "
+        "professional editorial science explainer art, coherent art direction, "
+        "strict palette midnight navy #101827, electric turquoise #00D9C0, "
+        "reveal yellow #FFD447, surprise coral pink #FF5478, off-white #F8FAFC, "
+        "vibrant selective color accents against dark background, high contrast, "
+        "minimal visual noise, clear readable silhouette on a phone screen, "
+        "subtle layered depth without realistic camera blur or 3D plastic textures, "
+        "same original mascot in every image: white round-headed stick-figure scientist, "
+        "two black dot eyes, short rounded limbs, tiny yellow backpack, "
+        "expressive acting and distinct pose matching the story beat, "
+        "show the concrete action and scientific subject, not generic posters, "
+        "strong focal point, visual humor, uncluttered composition, "
+        "no writing, no typography, no letters, no watermark, no logo, "
+        "reserve lower 30 percent as dark quiet negative space for captions. "
+    )
     return [direction + "Episode subject: " + subject[:120] +
             ". Illustrate this specific moment in the narration: " + " ".join(group)[:600]
             for group in chunks if group]
