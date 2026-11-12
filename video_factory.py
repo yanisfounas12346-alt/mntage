@@ -100,8 +100,11 @@ def validate_output(path: Path, expected_duration: float) -> None:
         raise RuntimeError("Export incomplet : vidéo ou voix absente.")
     if (videos[0].get("width"),videos[0].get("height")) != (WIDTH,HEIGHT):
         raise RuntimeError("Export incorrect : résolution verticale 1080x1920 attendue.")
-    actual=float(data.get("format",{}).get("duration",0))
-    if not (actual > 0) or abs(actual-expected_duration)>1.0:
+    try:
+        actual=float(data.get("format",{}).get("duration",0))
+    except (TypeError,ValueError) as exc:
+        raise RuntimeError("Durée MP4 illisible.") from exc
+    if not math.isfinite(actual) or actual<=0 or abs(actual-expected_duration)>1.0:
         raise RuntimeError(f"Durée incorrecte : {actual:.1f}s au lieu de {expected_duration:.1f}s.")
 
 def inspect_source_video(path: Path) -> dict:
@@ -122,7 +125,7 @@ def inspect_source_video(path: Path) -> dict:
         raise RuntimeError("Métadonnées vidéo source invalides.") from exc
     if width<480 or height<480:
         raise RuntimeError(f"Clip trop petit ({width}x{height}) : minimum 480 px par dimension.")
-    if duration<0.5:
+    if not math.isfinite(duration) or duration<0.5:
         raise RuntimeError("Clip source trop court ou sans durée détectable.")
     return {"width":width,"height":height,"duration":duration}
 
