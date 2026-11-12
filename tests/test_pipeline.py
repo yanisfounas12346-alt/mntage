@@ -174,6 +174,25 @@ class VideoPlanningTests(unittest.TestCase):
                 make_video("test","Bonjour",[bytes(damaged)])
         voice.assert_not_called()
 
+    def test_empty_music_rejected_before_voice(self):
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"musique MP3"):
+                make_video("test","Bonjour",[b"image"],music=b"")
+        voice.assert_not_called()
+
+    def test_invalid_music_rejected_before_voice(self):
+        from PIL import Image
+        image=Image.new("RGB",(32,32),"red")
+        buffer=io.BytesIO()
+        image.save(buffer,format="PNG")
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.duration_seconds",side_effect=RuntimeError("invalid audio")), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Musique MP3 invalide"):
+                make_video("test","Bonjour",[buffer.getvalue()],music=b"not an mp3")
+        voice.assert_not_called()
+
     def test_invalid_mp4_rejected_before_voice(self):
         with patch("video_factory.require_ffmpeg"), \
              patch("video_factory.inspect_source_video",side_effect=RuntimeError("Flux vidéo absent")), \
