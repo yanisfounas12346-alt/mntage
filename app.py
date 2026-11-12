@@ -90,8 +90,8 @@ with tab_create:
         if mode.startswith("IA cloud") or (science_mode and science_source.startswith("Premium")):
             st.caption(f"Coût prévisionnel avec marge : {estimate_eur(cloud_count):.4f} € ; réservé ce mois : {spent_eur():.4f} €. Prix et taux de change à vérifier chez fal.")
             cloud_approval=st.checkbox("J'autorise cet appel payant à fal.ai pour les images de cette vidéo.",value=False)
-        dynamic_edit=(st.checkbox("⚡ Montage dynamique — personnage animé et coupes rapides",value=science_mode,
-                          help="Ce mode classique superpose des éléments à des images fixes.")
+        dynamic_edit=(st.checkbox("✂️ Coupes rapides — sans autocollants superposés",value=science_mode,
+                          help="Images fixes montées sans ajout de personnage ou d’icône. Pour de vraies animations, utilise Studio animé 2D."
                       if not studio_selected else False)
         if studio_selected:
             st.caption("Animation 2D scénarisée : aucun autocollant ni zoom de caméra ajouté.")
@@ -122,6 +122,8 @@ with tab_create:
     if studio_selected:
         if st.button("👁️ Générer un aperçu animé de 8 secondes (gratuit)",use_container_width=True):
             try:
+                if not is_mirror_subject(science_subject, script):
+                    raise ValueError("Le pilote animé prend en charge uniquement le miroir. Choisis ce sujet pour cet aperçu.")
                 with st.spinner("Rendu local du miroir animé…"):
                     preview_dir=Path("outputs")
                     preview_dir.mkdir(parents=True,exist_ok=True)
@@ -138,6 +140,8 @@ with tab_create:
         if not script.strip():st.warning("Colle ton script.")
         else:
             try:
+                if studio_selected and (images or user_clips):
+                    raise ValueError("Studio animé 2D : retire les images et MP4 importés (le moteur produit lui-même tous les dessins).")
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
                     if user_clips:
