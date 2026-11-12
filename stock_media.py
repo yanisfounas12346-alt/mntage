@@ -106,3 +106,44 @@ def select_pixabay_scenes(script,limit=8):
             missing.append(query)
     if not selected:raise RuntimeError("Aucune vidéo Pixabay trouvée pour ce script.")
     return selected,missing
+
+def search_commons_videos(query, limit=6):
+    """Find freely licensed video files on Wikimedia Commons without API keys."""
+    params={"action":"query","generator":"search","gsrsearch":"filetype:video "+query[:90],
+            "gsrnamespace":6,"gsrlimit":max(5,min(limit*3,30)),
+            "prop":"imageinfo","iiprop":"url|size|mime|extmetadata","format":"json"}
+    url="https://commons.wikimedia.org/w/api.php?"+urlencode(params)
+    with urlopen(Request(url,headers={"User-Agent":"mntage/1.0 (educational video creator; contact via GitHub)"}),timeout=25) as response:
+        data=json.load(response)
+    allowed={"cc0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0"}
+    found=[]
+    for page in data.get("query",{}).get("pages",{}).values():
+        info=(page.get("imageinfo") or [{}])[0]
+        mime=info.get("mime","")
+        if mime not in {"video/webm","video/ogg","video/mp4"}:continue
+        if not 0<info.get("size",0)<=55*1024*1024:continue
+        meta=info.get("extmetadata",{})
+        license_name=meta.get("LicenseShortName",{}).get("value","").strip().lower()
+        if license_name not in allowed:continue
+        if not info.get("url"):continue
+        found.append({"id":page.get("pageid"),"url":info["url"],
+                      "page":info.get("descriptionurl",""),"credit":meta.get("Artist",{}).get("value",""),
+                      "license":license_name,"title":page.get("title","")})
+        if len(found)>=limit:break
+    return found
+
+def select_commons_scenes(script,limit=8):
+    """Select distinct licensed footage; never silently substitute unrelated visuals."""
+    chosen=[]
+    used=set()
+    missing=[]
+    for query in scene_queries(script,limit):
+        try:options=search_commons_videos(query,limit=8)
+        except Exception as exc:raise RuntimeError("Recherche Wikimedia Commons indisponible : "+str(exc)) from exc
+        item=next((v for v in options if v["id"] not in used),None)
+        if item:
+            chosen.append(item)
+            used.add(item["id"])
+        else:missing.append(query)
+    if not chosen:raise RuntimeError("Aucun clip vidéo libre trouvé sur Wikimedia Commons. Essaie des scènes plus concrètes ou importe tes MP4.")
+    return chosen,missing
