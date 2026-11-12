@@ -1,0 +1,5 @@
+streamlit>=1.38,<2
+Pillow>=10,<12
+edge-tts>=7,<9
+google-api-python-client>=2,<3
+google-auth-oauthlib>=1,<2
