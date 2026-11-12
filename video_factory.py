@@ -179,8 +179,14 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                           "-c:v","libx264","-preset","veryfast","-crf","23",str(clip)])
                     clips.append(clip)
                     continue
-                with Image.open(BytesIO(data)) as im:
-                    im = ImageOps.exif_transpose(im).convert("RGB")
+                # Compressed images can be tiny on disk but huge once decoded.
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error", Image.DecompressionBombWarning)
+                    with Image.open(BytesIO(data)) as im:
+                        if im.width * im.height > 40_000_000:
+                            raise ValueError("Image trop grande : maximum 40 mégapixels.")
+                        im = ImageOps.exif_transpose(im).convert("RGB")
                     im = ImageOps.fit(im, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
                     img = work / f"image_{idx:03d}.jpg"
                     im.save(img, quality=85)
