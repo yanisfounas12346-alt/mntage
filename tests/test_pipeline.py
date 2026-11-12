@@ -266,6 +266,7 @@ class VideoPlanningTests(unittest.TestCase):
             _download("http://example.org/video.mp4",1024)
         with patch("stock_media.urlopen") as request:
             response=request.return_value.__enter__.return_value
+            response.geturl.return_value="https://example.org/video.mp4"
             response.headers={"Content-Type":"text/html"}
             with self.assertRaisesRegex(RuntimeError,"page"):
                 _download("https://example.org/video.mp4",1024)
