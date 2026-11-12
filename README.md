@@ -59,3 +59,11 @@ Le support Vulkan AMD dépend du binaire, du pilote et du modèle ; le mode int�
 - [edge-tts](https://github.com/rany2/edge-tts) : synthèse vocale en ligne sans clé API.
 
 **Limites :** pas encore de sous-titres, musique, publication automatique, génération vidéo cinématique, ou tests de bout en bout validés. La publication YouTube privée reste disponible séparément via `youtube_upload.py` avec OAuth. Vérifie les droits des voix, images et modèles avant monétisation.
+
+## Sous-titres et musique (nouveau)
+
+Dans Streamlit, coche **Ajouter des sous-titres automatiques** pour incruster des sous-titres et exporter aussi un fichier SRT. Le minutage est estimé, et non aligné mot par mot. FFmpeg doit être compilé avec le filtre `subtitles` (libass) ; vérifie avec `ffmpeg -filters | findstr subtitles`. Tu peux importer une musique MP3 dont tu possèdes les droits ; elle est mixée à volume réduit avec la narration. Aucun catalogue musical ni téléchargement automatique n'est inclus.
+
+## Publication
+
+`youtube_upload.py` reste une commande distincte, avec configuration OAuth Google Cloud. Il n'y a pas de publication automatique sans validation dans l'interface.
