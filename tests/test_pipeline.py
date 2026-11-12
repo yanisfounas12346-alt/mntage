@@ -273,6 +273,12 @@ class VideoPlanningTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,"volumineux"):
                 _download("https://example.org/video.mp4",1024)
 
+    def test_scene_planning_rejects_nonfinite_duration(self):
+        for duration in (float("nan"),float("inf"),float("-inf"),0.0,-2.0):
+            with self.subTest(duration=duration):
+                with self.assertRaises(ValueError):
+                    scene_durations(duration,[],3)
+
     def test_scene_cut_rhythm_and_total_duration(self):
         words=[{"offset":int(t*10000000),"duration":1000000}
                for t in (1.8,3.9,6.1,8.2,10.1,12.2,14.1,16.1)]
