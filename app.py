@@ -6,7 +6,7 @@ from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
 from job_store import enqueue, jobs, next_job, finish, update_metrics, set_youtube
-from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes
+from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes, select_commons_scenes
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
 st.markdown("""
@@ -31,7 +31,7 @@ with tab_create:
     with st.expander("⚙️ Options avancées",expanded=False):
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
-        modes=["Mes clips MP4 — montage sans API (recommandé)"]
+        modes=["Auto — Wikimedia Commons (sans clé API)", "Mes clips MP4 — montage sans API"]
         if os.environ.get("PIXABAY_API_KEY"):
             modes.append("Vidéos Pixabay — vrais clips (gratuit)")
         if os.environ.get("PEXELS_API_KEY"):
@@ -45,7 +45,7 @@ with tab_create:
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
         user_clips=st.file_uploader("Mes clips vidéo MP4 (plusieurs plans)",type=["mp4"],accept_multiple_files=True,help="Importe plusieurs vidéos dont tu as les droits. Aucun compte ni clé API nécessaire.")
-        st.caption("Pour un vrai montage sans API, sélectionne Mes clips MP4 et ajoute tes séquences. Le mode Éco ne crée que des fonds abstraits.")
+        st.caption("Auto cherche de vraies vidéos sur Wikimedia Commons, sans clé. Les résultats dépendent du sujet ; crédits et licences à vérifier avant publication.")
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
         if images:return [i.getvalue() for i in images]
@@ -64,7 +64,13 @@ with tab_create:
             try:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
-                    if mode.startswith("Mes clips"):
+                    if mode.startswith("Auto"):
+                        found,missing=select_commons_scenes(script,limit=8)
+                        if missing:st.warning("Scènes non illustrées : "+", ".join(missing))
+                        clips=download_videos(found)
+                        st.info("Vidéos Wikimedia Commons : vérifie les plans et conserve les crédits de chaque auteur.")
+                        st.code("\n".join(f"{item['title']} | {item['license']} | {item['page']}" for item in found))
+                    elif mode.startswith("Mes clips"):
                         if not user_clips:raise RuntimeError("Ajoute au moins un clip MP4 dans Options avancées.")
                         clips=[file.getvalue() for file in user_clips]
                     elif mode.startswith("Vidéos"):
@@ -98,7 +104,11 @@ with tab_queue:
             try:
                 with st.spinner(f"Génération : {job['title']}"):
                     clips=None
-                    if job["mode"].startswith("Vidéos"):
+                    if job["mode"].startswith("Auto"):
+                        found,missing=select_commons_scenes(job["script"],limit=8)
+                        clips=download_videos(found)
+                        pics=[]
+                    elif job["mode"].startswith("Vidéos"):
                         found,missing=(select_pixabay_scenes(job["script"],limit=8) if "Pixabay" in job["mode"] else select_video_scenes(job["script"],limit=8))
                         if missing:st.warning("Scènes sans clip : "+", ".join(missing))
                         clips=download_videos(found)
