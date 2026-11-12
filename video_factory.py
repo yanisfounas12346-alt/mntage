@@ -58,7 +58,7 @@ def _run(args, timeout=1800):
 
 def scene_durations(duration: float, boundaries: list[dict], clip_count: int) -> list[float]:
     """Keep cuts near speech boundaries, with no very short or giant final scene."""
-    if duration <= 0 or clip_count < 1:
+    if not math.isfinite(duration) or duration <= 0 or clip_count < 1:
         raise ValueError("Durée ou nombre de clips invalide.")
     target_count=min(24,max(clip_count,round(duration/4.0)))
     target_count=min(target_count,max(1,int(duration/1.5)))
