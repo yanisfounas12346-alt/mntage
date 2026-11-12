@@ -128,6 +128,20 @@ du service. La validation artistique des vidéos nécessite encore un humain.
 Ne pas publier `outputs/automation/session_state.json` ni les journaux
 si des informations personnelles ou secrets y figurent.
 
+## Cycle d'optimisation 1 à 600
+
+**Objectif étendu à 600 demandes**, avec point de décision critique au palier
+100 (voir `QUALITY_GATE_100.md`). Le suivi local
+`tools/session_handoff.py` migre automatiquement un ancien fichier
+`session_state.json` portant l'objectif 100 vers l'objectif 600, **sans
+réinitialiser son compteur, son historique ou une requête en cours**.
+
+**Optimisation n°1 : lisibilité des annotations.** Le dessin animé charge
+désormais une police système en gras appropriée (Segoe UI/Arial sous Windows),
+avec mise à l'échelle pour 1080×1920 et cache de polices. Cela évite un
+repli silencieux sur une petite police bitmap quand DejaVu est absent.
+La qualité visuelle complète reste à confirmer en regardant un MP4 Windows.
+
 ## Pilote local supervisé : essai de 3 requêtes
 
 Le fichier \`tools/pilot_3.py\` fournit une petite interface Windows Tkinter,
