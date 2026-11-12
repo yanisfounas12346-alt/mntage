@@ -49,8 +49,26 @@ class SessionHandoffTests(unittest.TestCase):
         self.assertIn(first["request_id"],text)
         handoff.complete(s,first["request_id"],"Première amélioration vérifiée")
         updated=handoff.HANDOFF_FILE.read_text(encoding="utf-8")
-        self.assertIn("DEMANDES CONFIRMÉES : 1/100",updated)
+        self.assertIn("DEMANDES CONFIRMÉES : 1/600",updated)
         self.assertNotIn("EN COURS, ID",updated)
+
+    def test_old_100_request_cycle_migrates_without_losing_work(self):
+        state = handoff.initial()
+        state["goal"] = 100
+        state["completed"] = 17
+        state["last_commit"] = "deadbeef"
+        state["history"] = [{"number": 17, "summary": "Ancien résultat",
+                             "result": "validated", "commit": "deadbeef"}]
+        state["pending"] = {"request_id": "existing-id", "iteration": 18,
+                            "prompt": "Correction non terminée"}
+        handoff.save(state)
+        migrated = handoff.load()
+        self.assertEqual(migrated["goal"], 600)
+        self.assertEqual(migrated["completed"], 17)
+        self.assertEqual(migrated["pending"]["request_id"], "existing-id")
+        self.assertEqual(len(migrated["history"]), 1)
+        self.assertEqual(handoff.load()["goal"], 600)
+        self.assertIn("17/600", handoff.HANDOFF_FILE.read_text(encoding="utf-8"))
 
     def test_rejects_wrong_request_id_and_does_not_increment(self):
         s=handoff.initial()
