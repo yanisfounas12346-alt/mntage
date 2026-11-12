@@ -1,9 +1,10 @@
 """Regression tests for the articulated, floor-contact 2D walking cycle."""
 import math
 import unittest
+from unittest.mock import patch
 
 from motion_director import (walk_pose, walk_pose_with_translation, articulated_knee,
-                             THIGH_LENGTH, SHIN_LENGTH)
+                             walking_shoe_tip, THIGH_LENGTH, SHIN_LENGTH)
 from motion_studio import _background, _draw_frame
 
 
@@ -238,6 +239,83 @@ class WalkGaitTests(unittest.TestCase):
             self.assertAlmostEqual(stage_x, root_x_at(0)+34*scale, places=5)
             self.assertAlmostEqual(foot[1]+bob, 159, places=5)
             self.assertTrue(all(math.isfinite(v) for v in knee))
+
+    def test_walking_shoes_are_flat_when_planted_and_flex_when_lifted(self):
+        for phase, airborne_side in ((math.pi/2, -1), (3*math.pi/2, 1)):
+            with self.subTest(phase=phase):
+                t=phase/SPEED
+                sway,bob,legs,stride=walk_pose(t)
+                for side,leg in zip((-1,1),legs):
+                    foot=leg[2]
+                    toe=walking_shoe_tip(foot,side,stride)
+                    if side==airborne_side:
+                        self.assertLess(toe[1],foot[1]-5)
+                        self.assertLess(abs(toe[0]-foot[0]),15)
+                    else:
+                        self.assertAlmostEqual(toe[1],foot[1],places=6)
+                        self.assertAlmostEqual(toe[0],foot[0]+15*side,places=6)
+
+    def test_swing_toe_never_penetrates_ground(self):
+        for sample in range(251):
+            t=sample*math.tau/(250*SPEED)
+            _,bob,legs,stride=walk_pose(t)
+            for side,leg in zip((-1,1),legs):
+                toe=walking_shoe_tip(leg[2],side,stride)
+                self.assertLessEqual(toe[1]+bob,159.000001)
+
+    def test_toe_roll_is_periodic_and_continuous_at_contact(self):
+        period=math.tau/SPEED
+        for phase in (0.0,.2,1.2,math.pi,4.7,math.tau):
+            t=phase/SPEED
+            pose1=walk_pose(t)
+            pose2=walk_pose(t+period)
+            for side,leg1,leg2 in zip((-1,1),pose1[2],pose2[2]):
+                before=walking_shoe_tip(leg1[2],side,pose1[3])
+                after=walking_shoe_tip(leg2[2],side,pose2[3])
+                self.assertAlmostEqual(before[0],after[0],places=5)
+                self.assertAlmostEqual(before[1],after[1],places=5)
+        epsilon=1e-4
+        for phase in (0.0,math.pi,math.tau):
+            positions=[]
+            for offset in (-epsilon,epsilon):
+                t=(phase+offset)/SPEED
+                pose=walk_pose(t)
+                positions.append(tuple(walking_shoe_tip(
+                    leg[2],side,pose[3]) for side,leg in zip((-1,1),pose[2])))
+            for a,b in zip(*positions):
+                self.assertLess(math.dist(a,b),.02)
+
+    def test_planted_toe_stays_world_locked_when_actor_moves(self):
+        scale=.83
+        def root_x_at(t):
+            return 20+80*t+6*t*t
+        for side,phases,touchdown in (
+            (1,(.2,.7,1.7,2.6),0.0),
+            (-1,(math.pi+.2,math.pi+.8,math.pi+1.7),math.pi/SPEED),
+        ):
+            for phase in phases:
+                t=phase/SPEED
+                sway,bob,legs,stride=walk_pose_with_translation(
+                    t,root_x_at,scale=scale)
+                leg=legs[0 if side==-1 else 1]
+                toe=walking_shoe_tip(leg[2],side,stride)
+                world_x=root_x_at(t)+scale*(sway+toe[0])
+                self.assertAlmostEqual(world_x,
+                    root_x_at(touchdown)+side*49*scale,places=5)
+                self.assertAlmostEqual(toe[1]+bob,159,places=5)
+
+    def test_rendered_walking_shoe_uses_the_articulated_toe(self):
+        base=_background((540,960),"approach")
+        options=dict(shot=0,mouth=0.0,beat_progress=.4,
+                     absolute_seconds=math.pi/(2*SPEED),beat_rate=.2)
+        rolled=_draw_frame((540,960),"approach",.4,3,base,**options)
+        with patch("motion_director.walking_shoe_tip",
+                   side_effect=lambda foot,side,stride:
+                       (foot[0]+15*side,foot[1])) as fixed_shoe:
+            rigid=_draw_frame((540,960),"approach",.4,3,base,**options)
+        self.assertEqual(fixed_shoe.call_count,2)
+        self.assertNotEqual(rolled.tobytes(),rigid.tobytes())
+        self.assertEqual(rolled.getpixel((10,510)),rigid.getpixel((10,510)))
 
     def test_approach_actually_changes_pose_while_camera_remains_locked(self):
         bg = _background((540, 960), "approach")
