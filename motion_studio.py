@@ -324,8 +324,53 @@ def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0):
     return frame
 
 
+def _draw_alt_frame(frame, kind, shot, progress, seconds, mouth):
+    """Switch shot composition without camera shake or a continuous digital zoom."""
+    p = _Painter(frame)
+    t = progress * seconds
+    if progress < 0.09:
+        p.line([(25,214),(25+200*(1-progress/.09),214)], YELLOW, 6)
+    if shot == 1:
+        p.ellipse((80,230,460,665), fill=PANEL, outline=PANEL2, width=5)
+        if kind in ("brain", "neural", "vision"):
+            _brain(p,365,333,t,.64)
+        else:
+            p.ellipse((350,268,482,400), outline=CYAN, width=5)
+            if kind == "distort":
+                p.ellipse((379,298,449,368), fill=PINK)
+        _scientist(p,248,649,1.25,wave=t*3,startled=.6 if kind=="distort" else .1,
+                   blink=(t%3.1<.10),mouth=mouth)
+    elif shot == 2:
+        if kind in ("brain","neural","vision"):
+            _brain(p,270,407,t,1.42)
+            for j in range(4):
+                x=92+118*j
+                y=685-9*math.sin(t*3+j)
+                p.ellipse((x-9,y-9,x+9,y+9),YELLOW if j%2 else PINK)
+        else:
+            distortion=(.2 + .73*_ease(progress)) if kind=="distort" else 0.0
+            _mirror(p,270,228,338,485,distort=distortion,t=t)
+            _scientist(p,93,681,.50,wave=t*2.3,startled=.65 if kind=="distort" else .15,
+                       mouth=mouth)
+    elif shot == 3:
+        if kind in ("brain", "neural", "vision"):
+            _scientist(p,140,658,.85,wave=t*2.4,mouth=mouth)
+            _brain(p,396,378,t,.72)
+            for j in range(3):
+                p.line([(170,376+j*45),(300,357+j*31)],CYAN,3)
+        else:
+            _mirror(p,145,298,205,358,distort=0.0,t=t)
+            distortion=.24+.72*_ease(progress) if kind=="distort" else 0.1
+            _mirror(p,395,298,205,358,distort=distortion,t=t)
+            _scientist(p,270,699,.42,wave=t*2.2,startled=.5 if kind=="distort" else 0,
+                       mouth=mouth)
+            p.line([(260,315),(260,629)],MUTED,2)
+    return frame
+
+
 def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
-                        width: int = 1080, height: int = 1920) -> None:
+                        width: int = 1080, height: int = 1920,
+                        boundaries: list[dict] | None = None) -> None:
     """Stream native HD frames to FFmpeg without storing thousands of PNGs."""
     if width * BASE_H != height * BASE_W or fps < 1 or scene.end <= scene.start:
         raise ValueError("Format ou durée du plan animé invalide.")
@@ -339,8 +384,11 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
     try:
         assert proc.stdin is not None
         for i in range(frames):
-            image=_draw_frame((width,height),scene.kind,i/max(frames-1,1),
-                              scene.end-scene.start,base)
+            progress=i/max(frames-1,1)
+            absolute_seconds=scene.start + i/fps
+            mouth=mouth_open_at(absolute_seconds,boundaries)
+            image=_draw_frame((width,height),scene.kind,progress,
+                              scene.end-scene.start,base,shot=scene.shot,mouth=mouth)
             proc.stdin.write(image.tobytes())
         proc.stdin.close()
         assert proc.stderr is not None
@@ -359,5 +407,22 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
 
 
 def render_mirror_preview(destination: Path, seconds: float = 8.0) -> Path:
-    render_motion_scene(destination,MotionScene("distort",0.0,seconds))
+    """Three compositions in eight seconds, with an animated speaking mouth."""
+    import tempfile
+    if seconds <= 0 or seconds > 15:
+        raise ValueError("L'aperçu doit durer entre 0 et 15 secondes.")
+    shots = [MotionScene("stare",0.0,seconds*.34,1),
+             MotionScene("distort",seconds*.34,seconds*.67,2),
+             MotionScene("distort",seconds*.67,seconds,3)]
+    with tempfile.TemporaryDirectory() as folder:
+        files=[]
+        for i,shot in enumerate(shots):
+            path=Path(folder) / f"shot_{i}.mp4"
+            render_motion_scene(path,shot)
+            files.append(path)
+        manifest=Path(folder) / "clips.txt"
+        manifest.write_text("".join(f"file '{path.name}'\n" for path in files),encoding="utf-8")
+        subprocess.run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0",
+                        "-i",str(manifest),"-c","copy",str(destination)],
+                       check=True,capture_output=True,timeout=120)
     return destination
