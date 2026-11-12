@@ -25,6 +25,40 @@ def _blink(t,offset=0.):
 def _circle(p,x,y,r,color,width=3):
     p.ellipse((x-r,y-r,x+r,y+r),outline=color,width=width)
 
+# Lengths in the 540x960 reference stage, before character scaling.
+# Keep these values shared by in-place and translating walk cycles.
+THIGH_LENGTH = 56.0
+SHIN_LENGTH = 59.0
+
+
+def articulated_knee(hip, ankle, side):
+    """Solve a two-segment leg without moving the planted ankle.
+
+    Reachable positions preserve both segment lengths. At distances beyond
+    full extension the knee stays on the hip-to-ankle line and both segments
+    extend proportionally, avoiding a discontinuity or a math-domain error.
+    The exceptional overreach must still be checked artistically.
+    """
+    dx = ankle[0] - hip[0]
+    dy = ankle[1] - hip[1]
+    distance = math.hypot(dx, dy)
+    if not math.isfinite(distance):
+        raise ValueError("Non-finite leg coordinates.")
+    if distance < 1e-9:
+        return (hip[0] + (1 if side >= 0 else -1) * THIGH_LENGTH, hip[1])
+    ux, uy = dx / distance, dy / distance
+    if distance >= THIGH_LENGTH + SHIN_LENGTH:
+        # Physically unreachable: the world-space ankle has priority.
+        alpha = THIGH_LENGTH / (THIGH_LENGTH + SHIN_LENGTH)
+        return (hip[0] + dx * alpha, hip[1] + dy * alpha)
+    along = (THIGH_LENGTH**2 - SHIN_LENGTH**2 + distance**2) / (2 * distance)
+    along = max(-THIGH_LENGTH, min(THIGH_LENGTH, along))
+    bend = math.sqrt(max(0.0, THIGH_LENGTH**2 - along**2))
+    direction = 1 if side >= 0 else -1
+    return (hip[0] + ux * along + direction * uy * bend,
+            hip[1] + uy * along - direction * ux * bend)
+
+
 def walk_pose(t):
     """Deterministic two-foot walk cycle at 6.2 rad/s.
 
@@ -33,7 +67,7 @@ def walk_pose(t):
     stage coordinates. Body sway and bob are counteracted at the ankle so
     a planted foot keeps a stable position relative to the animated root.
     A translating actor can still move its planted foot across the screen.
-    This is a stylized walk, not full IK rigging.
+    Knees are solved from fixed upper/lower leg lengths when reachable.
     """
     phase=t*6.2
     stride=math.sin(phase)
@@ -49,8 +83,8 @@ def walk_pose(t):
         lift=22*swing_arc
         reach=23*swing_arc
         hip=(side*9,59)
-        knee=(side*22+reach*.44+side*lift*.10,111-lift*.40)
         foot=(side*34+reach-body_sway,159-lift-body_bob)
+        knee=articulated_knee(hip,foot,side)
         legs.append((hip,knee,foot))
     return body_sway,body_bob,tuple(legs),stride
 
@@ -91,8 +125,9 @@ def walk_pose_with_translation(t, root_x_at, *, scale=1.0):
         stage_x += side*34*scale
         # In _actor, world X = nominal root + sway*scale + local*scale.
         foot_x = (stage_x-root_now)/scale - sway
-        delta = foot_x-foot[0]
-        adjusted.append((hip, (knee[0]+delta*.45, knee[1]), (foot_x, foot[1])))
+        adjusted_foot = (foot_x, foot[1])
+        adjusted.append((hip, articulated_knee(hip, adjusted_foot, side),
+                         adjusted_foot))
     return sway, bob, tuple(adjusted), stride
 
 
