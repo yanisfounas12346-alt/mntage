@@ -288,7 +288,11 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
     """Stream native HD frames to FFmpeg without storing thousands of PNGs."""
     if width * BASE_H != height * BASE_W or fps < 1 or scene.end <= scene.start:
         raise ValueError("Format ou durée du plan animé invalide.")
-    frames=max(1,round((scene.end-scene.start)*fps))
+    # Round absolute cut positions, not each shot duration independently.
+    # This prevents cumulative audio/video drift over a 30+ shot episode.
+    start_frame=round(scene.start*fps)
+    end_frame=round(scene.end*fps)
+    frames=max(1,end_frame-start_frame)
     base=_background((width,height),scene.kind)
     args=["ffmpeg","-y","-loglevel","error","-f","rawvideo","-pixel_format","rgb24",
           "-video_size",f"{width}x{height}","-framerate",str(fps),"-i","pipe:0",
@@ -299,7 +303,7 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
         assert proc.stdin is not None
         for i in range(frames):
             progress=i/max(frames-1,1)
-            absolute_seconds=scene.start + i/fps
+            absolute_seconds=(start_frame+i)/fps
             mouth=(speech_motion.at(absolute_seconds) if speech_motion is not None
                    else mouth_open_at(absolute_seconds,boundaries))
             arc=scene.beat_from+(scene.beat_to-scene.beat_from)*progress
