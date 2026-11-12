@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
-from video_factory import scene_durations, validate_output
+from video_factory import scene_durations, validate_output, inspect_source_video
 
 class VideoPlanningTests(unittest.TestCase):
     def test_scene_topics(self):
@@ -63,6 +63,23 @@ class VideoPlanningTests(unittest.TestCase):
             results=search_commons_videos("ocean waves",limit=1)
         self.assertEqual(len(results),1)
         self.assertEqual(results[0]["id"],2)
+
+    def test_source_video_quality_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"clip.webm"
+            path.write_bytes(b"video")
+            metadata={"streams":[{"width":1280,"height":720}],
+                      "format":{"duration":"4.5"}}
+            with patch("video_factory.subprocess.run",return_value=SimpleNamespace(
+                    returncode=0,stdout=json.dumps(metadata),stderr="")):
+                self.assertEqual(inspect_source_video(path)["width"],1280)
+                metadata["streams"][0]["height"]=240
+                with self.assertRaisesRegex(RuntimeError,"trop petit"):
+                    inspect_source_video(path)
+                metadata["streams"][0]["height"]=720
+                metadata["format"]["duration"]="0.1"
+                with self.assertRaisesRegex(RuntimeError,"trop court"):
+                    inspect_source_video(path)
 
     def test_media_download_guards(self):
         with self.assertRaisesRegex(RuntimeError,"HTTPS"):
