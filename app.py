@@ -6,7 +6,7 @@ import streamlit as st
 from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
-from job_store import enqueue, jobs, next_job, finish, retry_failed, update_metrics, set_youtube
+from job_store import enqueue, jobs, next_job, finish, retry_failed, recover_interrupted, update_metrics, set_youtube
 from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes, select_commons_scenes, download_commons_scenes
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
@@ -155,6 +155,17 @@ with tab_queue:
                         st.rerun()
                     else:
                         st.warning("Cette tâche n'est plus en échec.")
+            if job["status"]=="running":
+                st.warning("Cette tâche est marquée en cours. Ne la récupère que si aucun rendu FFmpeg n'est encore actif.")
+                confirm_recovery=st.checkbox(
+                    "Je confirme que cette génération est arrêtée",
+                    key=f"recover_confirm_{job['id']}")
+                if st.button("↩️ Remettre en attente",disabled=not confirm_recovery,key=f"recover_{job['id']}"):
+                    if recover_interrupted(job["id"]):
+                        st.success("Tâche remise en attente.")
+                        st.rerun()
+                    else:
+                        st.warning("Le statut de cette tâche a changé.")
             path=Path(job["video"]) if job["video"] else None
             if path and path.is_file():
                 st.video(str(path))
