@@ -50,6 +50,7 @@ def scene_durations(duration: float, boundaries: list[dict], clip_count: int) ->
     if duration <= 0 or clip_count < 1:
         raise ValueError("Durée ou nombre de clips invalide.")
     target_count = min(24, max(clip_count, round(duration / 4.0)))
+    target_count = min(target_count, max(1,int(duration / 1.5)))
     if target_count == 1 or not boundaries:
         return [duration / target_count] * target_count
     ends = sorted({min(duration, max(0.0, (w["offset"] + w["duration"]) / 10000000))
@@ -60,7 +61,8 @@ def scene_durations(duration: float, boundaries: list[dict], clip_count: int) ->
         candidates=[t for t in ends if t-cuts[-1]>=1.5 and
                     duration-t>=1.5*(target_count-i)]
         if not candidates:
-            return [duration / target_count] * target_count
+            # Keep the cuts already chosen; do not erase their alignment.
+            return [b-a for a,b in zip(cuts,cuts[1:])] + [duration-cuts[-1]]
         cuts.append(min(candidates,key=lambda t:abs(t-ideal)))
     cuts.append(duration)
     return [b-a for a,b in zip(cuts,cuts[1:])]
@@ -97,7 +99,9 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
     if not script.strip() or not (image_bytes or video_bytes):
         raise ValueError("Un script et au moins un visuel sont nécessaires.")
     if len(image_bytes) > 24 or len(video_bytes or []) > 24:
-        raise ValueError("Maximum 24 images pour protéger les ressources du PC.")
+        raise ValueError("Maximum 24 visuels pour protéger les ressources du PC.")
+    if sum(map(len,video_bytes or [])) > 300*1024*1024:
+        raise ValueError("Les vidéos dépassent la limite totale de 300 Mo.")
     OUT.mkdir(exist_ok=True)
     output = OUT / f"{slugify(title)}-{uuid4().hex[:8]}.mp4"
     with tempfile.TemporaryDirectory() as tmp:
