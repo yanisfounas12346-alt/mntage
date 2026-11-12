@@ -160,6 +160,20 @@ class VideoPlanningTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         duration_seconds(Path("voice.mp3"))
 
+    def test_corrupt_png_payload_rejected_before_voice(self):
+        from PIL import Image
+        image=Image.new("RGB",(64,64),"red")
+        stream=io.BytesIO()
+        image.save(stream,format="PNG")
+        damaged=bytearray(stream.getvalue())
+        position=damaged.index(b"IDAT")+8
+        damaged[position] ^= 0x01  # Invalid PNG chunk checksum, valid header.
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Image 1 invalide"):
+                make_video("test","Bonjour",[bytes(damaged)])
+        voice.assert_not_called()
+
     def test_corrupt_image_rejected_before_voice(self):
         with patch("video_factory.require_ffmpeg"), \
              patch("video_factory.synthesize") as voice:
