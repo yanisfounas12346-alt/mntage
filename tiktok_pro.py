@@ -44,6 +44,24 @@ def production_brief(topic: str, keyword: str, style: str = "documentaire ciném
         "BUDGET : 30 EUR/mois maximum ; aucune dépense automatique.\n"
     )
 
+def seo_editorial_checks(title: str, script: str, keyword: str = "") -> dict:
+    """Transparent editorial checklist. Not a TikTok ranking prediction."""
+    title = re.sub(r"\s+", " ", title).strip()
+    keyword = re.sub(r"\s+", " ", keyword).strip()
+    words = re.findall(r"\b[\wÀ-ÿ]+\b", script, flags=re.UNICODE)
+    first_words = " ".join(words[:40]).casefold()
+    key = keyword.casefold()
+    return {
+        "title_specific": bool(title and title.casefold() not in
+                               {"mon premier short", "sans titre", "nouvelle vidéo"}),
+        "title_readable": 12 <= len(title) <= 85,
+        "keyword_in_title": bool(key and key in title.casefold()),
+        "keyword_in_script": bool(key and key in script.casefold()),
+        "keyword_in_opening": bool(key and key in first_words),
+        "opening_words": " ".join(words[:18]),
+    }
+
+
 def seo_pack(title: str, script: str, keyword: str = "", science: bool = False) -> str:
     """Produce an editable French publishing pack without inventing facts or trends."""
     title = re.sub(r"\s+", " ", title).strip()
@@ -65,7 +83,16 @@ def seo_pack(title: str, script: str, keyword: str = "", science: bool = False) 
             hashtags.append(tag)
     hashtags = hashtags[:5]
     audit = audit_script(script, keyword)
+    checks = seo_editorial_checks(title, script, keyword)
+    suggested_search_title = (safe_title if checks["keyword_in_title"]
+                              else (keyword[:40].capitalize() + " : " + safe_title)[:85])
     notes = []
+    if not checks["title_specific"]:
+        notes.append("- Remplacer le titre générique par un titre spécifique au phénomène.")
+    if not checks["keyword_in_title"]:
+        notes.append("- Placer le sujet recherché naturellement dans le titre.")
+    if not checks["keyword_in_opening"]:
+        notes.append("- Vérifier que le sujet est identifiable dès les premières phrases.")
     if not audit["keyword_in_script"]:
         notes.append("- Ajouter naturellement le mot-clé à la narration si pertinent.")
     if not audit["duration_ok"]:
@@ -77,9 +104,11 @@ def seo_pack(title: str, script: str, keyword: str = "", science: bool = False) 
     ])
     return (
         "PACK DE PUBLICATION — BROUILLON À RELIRE\n\n"
-        f"TITRE\n{safe_title}\n\n"
+        f"TITRE ACTUEL\n{safe_title}\n\n"
+        f"TITRE ORIENTÉ RECHERCHE (PROPOSITION)\n{suggested_search_title}\n\n"
         f"MOT-CLÉ CIBLE\n{keyword}\n\n"
-        f"DESCRIPTION\n{summary}\n"
+        f"ACCROCHE ISSUE DU SCRIPT\n{checks['opening_words']}\n\n"
+        f"DESCRIPTION\n{keyword.capitalize()} : {summary}\n"
         f"Une découverte étonnante expliquée simplement.\n\n"
         f"HASHTAGS\n{' '.join(hashtags)}\n\n"
         f"COMMENTAIRE ÉPINGLÉ (SUGGESTION)\n"
