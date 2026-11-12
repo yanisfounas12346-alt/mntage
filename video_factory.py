@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import re
+import math
 import shutil
 import subprocess
 import tempfile
@@ -26,7 +27,13 @@ def duration_seconds(audio: Path) -> float:
     r = subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
                         "-of","default=noprint_wrappers=1:nokey=1",str(audio)],
                        capture_output=True,text=True,check=True,timeout=30)
-    return float(r.stdout.strip())
+    try:
+        duration=float(r.stdout.strip())
+    except ValueError as exc:
+        raise RuntimeError("Durée audio illisible : ffprobe n'a pas retourné de nombre.") from exc
+    if not math.isfinite(duration) or duration<=0:
+        raise RuntimeError("Durée audio invalide : la voix est vide ou corrompue.")
+    return duration
 
 async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5%"):
     boundaries=[]
