@@ -31,7 +31,7 @@ with tab_create:
     with st.expander("⚙️ Options avancées",expanded=False):
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
-        modes=[]
+        modes=["Mes clips MP4 — montage sans API (recommandé)"]
         if os.environ.get("PIXABAY_API_KEY"):
             modes.append("Vidéos Pixabay — vrais clips (gratuit)")
         if os.environ.get("PEXELS_API_KEY"):
@@ -44,7 +44,8 @@ with tab_create:
         captions=st.checkbox("Sous-titres incrustés (timing estimé)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
-        st.caption("⚠️ Le mode Éco ne produit pas de vrais sujets vidéo. Pour de véritables clips, configure PIXABAY_API_KEY et choisis Vidéos Pixabay.")
+        user_clips=st.file_uploader("Mes clips vidéo MP4 (plusieurs plans)",type=["mp4"],accept_multiple_files=True,help="Importe plusieurs vidéos dont tu as les droits. Aucun compte ni clé API nécessaire.")
+        st.caption("Pour un vrai montage sans API, sélectionne Mes clips MP4 et ajoute tes séquences. Le mode Éco ne crée que des fonds abstraits.")
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
         if images:return [i.getvalue() for i in images]
@@ -63,7 +64,10 @@ with tab_create:
             try:
                 with st.spinner("Génération de la vidéo…"):
                     clips=None
-                    if mode.startswith("Vidéos"):
+                    if mode.startswith("Mes clips"):
+                        if not user_clips:raise RuntimeError("Ajoute au moins un clip MP4 dans Options avancées.")
+                        clips=[file.getvalue() for file in user_clips]
+                    elif mode.startswith("Vidéos"):
                         found,missing=(select_pixabay_scenes(script,limit=8) if "Pixabay" in mode else select_video_scenes(script,limit=8))
                         if missing:st.warning("Certaines scènes n'ont pas de clip correspondant : "+", ".join(missing))
                         clips=download_videos(found)
@@ -75,7 +79,7 @@ with tab_create:
             except Exception as exc:st.error(f"Erreur : {exc}")
     if st.button("➕ Ajouter à la file d'attente",use_container_width=True):
         if not script.strip():st.warning("Colle ton script.")
-        elif music or images:st.warning("Pour la file, retire les fichiers ajoutés : ils ne sont pas conservés.")
+        elif music or images or user_clips or mode.startswith("Mes clips"):st.warning("Pour la file, utilise un mode sans fichiers personnels : les clips importés ne sont pas conservés.")
         else:
             enqueue(title,script,mode,voice,captions)
             st.success("Ajouté à la file. Lance ensuite le prochain travail dans l'onglet File & historique.")
