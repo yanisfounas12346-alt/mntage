@@ -12,7 +12,7 @@ def _api(endpoint,params):
 
 def scene_queries(script,limit=8):
     """Turn French narration into concrete English footage searches."""
-    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\\s+|\\n+",script) if s.strip()]
+    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
     topics=[
         (("forêt","arbre","bois","jungle"),"forest trees"),
         (("océan","mer","vague","plage","eau"),"ocean waves"),
