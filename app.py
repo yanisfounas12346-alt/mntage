@@ -110,7 +110,11 @@ with tab_queue:
     st.caption("File locale persistante. Les tâches s'exécutent une par une, lorsque tu cliques. Pas de processus en arrière-plan.")
     if st.button("▶️ Traiter la prochaine vidéo",type="primary",use_container_width=True):
         job=next_job()
-        if not job:st.info("La file est vide.")
+        if not job:
+            if any(item["status"]=="running" for item in jobs()):
+                st.info("Un montage est déjà en cours. Attends sa fin avant de lancer la prochaine tâche.")
+            else:
+                st.info("Aucune tâche en attente.")
         else:
             try:
                 with st.spinner(f"Génération : {job['title']}"):
