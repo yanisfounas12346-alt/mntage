@@ -26,6 +26,42 @@ class WalkGaitTests(unittest.TestCase):
                 self.assertGreater(abs(airborne[0] - grounded[0]), 1)
                 self.assertGreater(abs(stride), .99)
 
+    def test_stance_ankle_does_not_slide_against_body_sway(self):
+        # The animated root sways, but the planted shoe stays at one X.
+        for phase in (math.pi/8, math.pi/4, math.pi/2, 3*math.pi/4,
+                      7*math.pi/8, 9*math.pi/8, 5*math.pi/4,
+                      3*math.pi/2, 7*math.pi/4, 15*math.pi/8):
+            with self.subTest(phase=phase):
+                sway, bob, legs, stride = walk_pose(phase/SPEED)
+                planted = 1 if stride > 0 else 0
+                shoe = legs[planted][2]
+                expected_x = 34 if planted == 1 else -34
+                self.assertAlmostEqual(shoe[0] + sway, expected_x, places=6)
+                self.assertAlmostEqual(shoe[1] + bob, 159.0, places=6)
+
+    def test_foot_contacts_have_no_horizontal_snap(self):
+        # Both ankles approach each stance transition smoothly.
+        epsilon = 0.001
+        for phase in (0.0, math.pi, math.tau):
+            with self.subTest(phase=phase):
+                for offset in (-epsilon, epsilon):
+                    sway, _, legs, _ = walk_pose((phase + offset)/SPEED)
+                    self.assertAlmostEqual(legs[0][2][0] + sway, -34,
+                                           delta=0.0001)
+                    self.assertAlmostEqual(legs[1][2][0] + sway, 34,
+                                           delta=0.0001)
+
+    def test_foot_still_advances_during_airborne_swing(self):
+        for phase, moving_index, resting_x in (
+            (math.pi/2, 0, -34),
+            (3*math.pi/2, 1, 34),
+        ):
+            with self.subTest(phase=phase):
+                sway, bob, legs, _ = walk_pose(phase/SPEED)
+                airborne = legs[moving_index][2]
+                self.assertGreater(airborne[0] + sway, resting_x + 20)
+                self.assertLess(airborne[1] + bob, 140)
+
     def test_knee_bends_when_leg_is_airborne(self):
         _, _, stance, _ = walk_pose(0.0)
         _, _, swing, _ = walk_pose(math.pi / (2 * SPEED))

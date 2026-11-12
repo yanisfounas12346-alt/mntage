@@ -30,8 +30,10 @@ def walk_pose(t):
 
     One leg swings and lifts while the opposite sole stays in contact with
     the floor; knees bend during the airborne half-stride. Values use 540x960
-    stage coordinates. Counteracting body bob at the ankle keeps the contact
-    foot at a stable floor height. This is a stylized walk, not full IK rigging.
+    stage coordinates. Body sway and bob are counteracted at the ankle so
+    a planted foot keeps a stable position relative to the animated root.
+    A translating actor can still move its planted foot across the screen.
+    This is a stylized walk, not full IK rigging.
     """
     phase=t*6.2
     stride=math.sin(phase)
@@ -40,9 +42,12 @@ def walk_pose(t):
     body_sway=2.8*math.sin(phase)
     legs=[]
     for side, swing in ((-1,stride),(1,-stride)):
-        # Lift only on the forward swing. Power 2 softens the landing.
-        lift=22*max(0.0,swing)**2
-        reach=23*swing
+        # Keep the stance ankle planted horizontally; advance only the
+        # airborne foot. The squared arc eases takeoff and landing without
+        # introducing a position or velocity jump at foot contact.
+        swing_arc=max(0.0,swing)**2
+        lift=22*swing_arc
+        reach=23*swing_arc
         hip=(side*9,59)
         knee=(side*22+reach*.44+side*lift*.10,111-lift*.40)
         foot=(side*34+reach-body_sway,159-lift-body_bob)
