@@ -27,9 +27,9 @@ def search_videos(query,limit=3):
     out=[]
     for video in data.get("videos",[]):
         files=[f for f in video.get("video_files",[]) if f.get("file_type")=="video/mp4" and f.get("link")]
-        files.sort(key=lambda f:(abs(f.get("width",540)-540)+abs(f.get("height",960)-960)))
+        files.sort(key=lambda f:(0 if (f.get("width") or 0) >= 540 and (f.get("height") or 0) >= 960 else 1, abs((f.get("width") or 540)-720)+abs((f.get("height") or 960)-1280)))
         if files:
-            out.append({"url":files[0]["link"],"credit":video.get("user",{}).get("name",""),"page":video.get("url",""),"duration":video.get("duration",0)})
+            out.append({"url":files[0]["link"],"credit":video.get("user",{}).get("name",""),"page":video.get("url",""),"duration":video.get("duration",0),"id":video.get("id")})
     return out
 
 def search_images(query,limit=4):
@@ -47,3 +47,20 @@ def download_images(items):
 
 def download_videos(items):
     return [_download(i["url"],55*1024*1024) for i in items]
+
+def select_video_scenes(script, limit=8):
+    """Prefer distinct source videos; fail visibly instead of substituting abstract backgrounds."""
+    selected=[]
+    used=set()
+    missing=[]
+    for query in scene_queries(script,limit):
+        options=search_videos(query,limit=6)
+        choice=next((v for v in options if v.get("id") not in used),None)
+        if choice:
+            selected.append(choice)
+            used.add(choice.get("id"))
+        else:
+            missing.append(query)
+    if not selected:
+        raise RuntimeError("Aucun clip Pexels pertinent trouvé. Essaie un script plus visuel.")
+    return selected,missing
