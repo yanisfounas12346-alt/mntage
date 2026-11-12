@@ -192,6 +192,24 @@ class VideoPlanningTests(unittest.TestCase):
                 make_video("test","Bonjour",[bytes(damaged)])
         voice.assert_not_called()
 
+    def test_export_probe_timeout_has_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            video=Path(tmp)/"export.mp4"
+            video.write_bytes(b"x"*2048)
+            with patch("video_factory.subprocess.run",
+                       side_effect=subprocess.TimeoutExpired(["ffprobe"],30)):
+                with self.assertRaisesRegex(RuntimeError,"FFprobe indisponible ou trop lent"):
+                    validate_output(video,5.0)
+
+    def test_export_invalid_json_has_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            video=Path(tmp)/"export.mp4"
+            video.write_bytes(b"x"*2048)
+            with patch("video_factory.subprocess.run",
+                       return_value=SimpleNamespace(returncode=0,stdout="{broken")):
+                with self.assertRaisesRegex(RuntimeError,"Métadonnées du MP4 exporté illisibles"):
+                    validate_output(video,5.0)
+
     def test_oversized_video_resolution_rejected(self):
         from video_factory import inspect_source_video
         payload={"streams":[{"width":7680,"height":4320,"duration":"5.0"}],
