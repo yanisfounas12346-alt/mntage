@@ -5,7 +5,7 @@ from pathlib import Path
 import streamlit as st
 from video_factory import make_video
 from science_wtf import free_script_scenes, script_scene_prompts, sample_script, TOPICS
-from tiktok_pro import audit_script, production_brief, MONTHLY_BUDGET_EUR
+from tiktok_pro import audit_script, production_brief, seo_pack, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images, scene_prompts
 from cloud_ai import configured as cloud_configured, generate_cloud_images, estimate_eur, spent_eur
@@ -57,6 +57,14 @@ with tab_create:
         st.download_button("📋 Télécharger le brief SEO",
             production_brief(title,seo_keyword,visual_style),
             file_name="brief-tiktok-pro.txt",mime="text/plain")
+    if script.strip() and title.strip():
+        with st.expander("📈 Pack SEO prêt à publier", expanded=False):
+            st.caption("Brouillon éditable : pas de recherche de tendances ni de publication automatique.")
+            pack = seo_pack(title, script, seo_keyword, science=science_mode)
+            st.text_area("Titre, description, hashtags et vérifications", value=pack, height=290,
+                         help="Copie puis adapte le texte après avoir vérifié les faits et la vidéo.")
+            st.download_button("⬇️ Télécharger le pack SEO", pack,
+                               file_name="pack-seo-science-wtf.txt", mime="text/plain")
     with st.expander("⚙️ Options avancées",expanded=False):
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"],help="Deux voix françaises gratuites Edge TTS : écoute les deux avant publication.")
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-10%",help="Pour un documentaire mystérieux, essaie -10 % ou -5 %. Le débit ne remplace pas une voix expressive.")
