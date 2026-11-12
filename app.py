@@ -6,7 +6,7 @@ import streamlit as st
 from video_factory import make_video
 from motion_studio import render_mirror_preview, is_mirror_subject
 from science_wtf import free_script_scenes, script_scene_prompts, sample_script, TOPICS
-from tiktok_pro import audit_script, production_brief, seo_pack, MONTHLY_BUDGET_EUR
+from tiktok_pro import audit_script, production_brief, seo_pack, seo_editorial_checks, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images, scene_prompts
 from cloud_ai import configured as cloud_configured, generate_cloud_images, estimate_eur, spent_eur
@@ -38,7 +38,7 @@ with tab_create:
     if science_mode:
         st.caption("Studio animé 2D original disponible pour le miroir ; autres sujets : dessins locaux ou fal.ai. Le script reste à vérifier scientifiquement.")
         if studio_selected:
-            st.info("NOUVEAU : coupes visuelles toutes les 3,25 s maximum, quatre cadrages originaux, bouche animée selon les mots de la narration et caméra stable. Synchronisation labiale approximative, sans changement de voix.")
+            st.info("NOUVEAU : cadrages courts, gestes (marche, observation, surprise, pointage), sourcils, clignements, bouche animée et reflet déformable. Caméra stable. Synchronisation labiale approximative.")
         if science_topic != "Aucun" and st.button("✍️ Charger un exemple de script"):
             st.session_state["science_script"]=sample_script(science_topic)
     title=st.text_input("Titre","Mon premier Short")
@@ -51,6 +51,15 @@ with tab_create:
             "documentaire cinématique","réaliste","animation 3D","illustration scientifique",
             "fantastique"],key="seo_style")
         audit=audit_script(script,seo_keyword)
+        seo_checks=seo_editorial_checks(title,script,seo_keyword)
+        if script.strip():
+            if not seo_checks["title_specific"]:
+                st.warning("SEO : remplace « Mon premier Short » par un titre spécifique au phénomène.")
+            if not seo_checks["keyword_in_title"]:
+                st.info("SEO : le mot-clé principal n'apparaît pas dans le titre.")
+            if not seo_checks["keyword_in_opening"]:
+                st.info("SEO : rends le sujet identifiable dans les 40 premiers mots du script.")
+        st.caption("Checklist éditoriale : ni classement prédit, ni validation TikTok.")
         st.metric("Durée estimée de narration",f"{audit['estimated_seconds']} s")
         st.caption(f"Objectif indicatif : 65 à 90 s (environ {audit['target_words'][0]} à {audit['target_words'][1]} mots).")
         if script.strip() and not audit["duration_ok"]:
@@ -63,7 +72,7 @@ with tab_create:
             file_name="brief-tiktok-pro.txt",mime="text/plain")
     if script.strip() and title.strip():
         with st.expander("📈 Pack SEO prêt à publier", expanded=False):
-            st.caption("Brouillon éditable : pas de recherche de tendances ni de publication automatique.")
+            st.caption("Titres orientés recherche, accroche, description et hashtags. Aucune tendance TikTok vérifiée.")
             pack = seo_pack(title, script, seo_keyword, science=science_mode)
             st.text_area("Titre, description, hashtags et vérifications", value=pack, height=290,
                          help="Copie puis adapte le texte après avoir vérifié les faits et la vidéo.")
@@ -130,7 +139,7 @@ with tab_create:
                     preview_path=preview_dir / "apercu-miroir-science-wtf.mp4"
                     render_mirror_preview(preview_path)
                 st.session_state["last_mirror_preview"]=str(preview_path)
-                st.success("Aperçu silencieux prêt : vérifie l'animation avant de générer l'épisode complet.")
+                st.success("Aperçu silencieux prêt : la bouche est simulée dans cet extrait. Vérifie la synchronisation sur la vidéo complète.")
             except Exception as exc:
                 st.error(f"Aperçu impossible : {exc}")
         preview_path=Path(st.session_state.get("last_mirror_preview",""))
