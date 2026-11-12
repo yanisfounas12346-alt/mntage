@@ -225,6 +225,32 @@ def _mascot_overlay(destination: Path, pose: int) -> None:
     d.ellipse(pt(240, 90, 267, 117), fill=turquoise)
     im.resize(size, Image.Resampling.LANCZOS).save(destination)
 
+def _reaction_overlay(destination: Path, pose: int) -> None:
+    """A separate antialiased vector-like reaction graphic for layered animation."""
+    from PIL import ImageDraw
+    size, scale = 240, 3
+    im = Image.new("RGBA", (size * scale, size * scale))
+    d = ImageDraw.Draw(im)
+    def p(box): return tuple(int(v * scale) for v in box)
+    turquoise = (0, 217, 192, 240)
+    yellow = (255, 212, 71, 255)
+    pink = (255, 84, 120, 255)
+    navy = (16, 24, 39, 230)
+    color = (turquoise, yellow, pink)[pose % 3]
+    d.ellipse(p((25, 25, 215, 215)), outline=color, width=9 * scale)
+    d.ellipse(p((45, 45, 195, 195)), fill=navy, outline=color, width=5 * scale)
+    if pose % 3 == 0:
+        d.ellipse(p((102, 65, 138, 144)), fill=yellow)
+        d.ellipse(p((105, 158, 135, 188)), fill=yellow)
+    elif pose % 3 == 1:
+        d.polygon([p((120, 56)), p((150, 113)), p((121, 113)),
+                   p((143, 180)), p((88, 116)), p((116, 116))], fill=yellow)
+    else:
+        d.ellipse(p((90, 80, 150, 140)), outline=pink, width=10 * scale)
+        d.arc(p((65, 66, 175, 182)), 15, 160, fill=pink, width=8 * scale)
+    im.resize((size, size), Image.Resampling.LANCZOS).save(destination)
+
+
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
@@ -321,19 +347,25 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 zoom = "1" if dynamic else ("min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))")
                 x = "0" if dynamic else ("iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)")
                 if dynamic:
-                    # A transparent character bobs independently while the background stays still.
+                    # Three independent layers: stable background, acting mascot, reaction icon.
                     mascot = work / f"mascot_{idx:03d}.png"
+                    reaction = work / f"reaction_{idx:03d}.png"
                     _mascot_overlay(mascot, idx)
-                    side_x = "45" if idx % 2 == 0 else "W-w-45"
-                    # Overlay output timestamps start at zero for each scene.
+                    _reaction_overlay(reaction, idx)
+                    side_x = "45" if idx % 2 == 0 else "W-w-365"
+                    reaction_x = "W-w-90" if idx % 2 == 0 else "90"
+                    # Bounded motion with no camera shake. Icons sit above subtitle safe area.
                     filter_graph = (
                         "[0:v]fps=25,scale=1080:1920,setsar=1[bg];"
                         f"[bg][1:v]overlay=x={side_x}:"
-                        "y='1030+18*sin(4*t)':eval=frame:shortest=1,"
+                        "y='1030+12*sin(3*t)':eval=frame:shortest=1[character];"
+                        f"[character][2:v]overlay=x='{reaction_x}+8*sin(2*t)':"
+                        "y='480+14*sin(2.5*t)':eval=frame:shortest=1,"
                         "format=yuv420p[v]"
                     )
                     _run(["ffmpeg","-y","-loglevel","error","-loop","1","-framerate","25",
                           "-i",str(img),"-loop","1","-framerate","25","-i",str(mascot),
+                          "-loop","1","-framerate","25","-i",str(reaction),
                           "-filter_complex",filter_graph,"-map","[v]",
                           "-frames:v",str(frames),"-c:v","libx264","-preset","veryfast",
                           "-crf","19",str(clip)])
