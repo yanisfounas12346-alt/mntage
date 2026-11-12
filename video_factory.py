@@ -174,6 +174,17 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
     try:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
+            # Probe all imported clips before starting online speech synthesis.
+            source_paths = {}
+            if video_bytes:
+                for idx, data in enumerate(video_bytes):
+                    source = work / f"source_{idx:03d}.mp4"
+                    source.write_bytes(data)
+                    try:
+                        inspect_source_video(source)
+                    except (RuntimeError, OSError, ValueError) as exc:
+                        raise ValueError(f"Clip MP4 {idx + 1} invalide : {exc}") from exc
+                    source_paths[idx] = source
             audio = work / "voice.mp3"
             boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
             duration = duration_seconds(audio)
@@ -181,17 +192,11 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             durations = scene_durations(duration,boundaries,count) if video_bytes else [duration/count]*count
             scene_count = len(durations)
             clips = []
-            source_paths = {}
             for idx in range(scene_count):
                 data = (video_bytes if video_bytes else image_bytes)[idx % count]
                 scene_duration = durations[idx]
                 if video_bytes:
-                    source = source_paths.get(idx % count)
-                    if source is None:
-                        source = work / f"source_{idx % count:03d}.mp4"
-                        source.write_bytes(data)
-                        inspect_source_video(source)
-                        source_paths[idx % count] = source
+                    source = source_paths[idx % count]
                     clip = work / f"clip_{idx:03d}.mp4"
                     # Repeat short source clips if needed, discard their original audio.
                     _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
