@@ -63,6 +63,15 @@ class VideoPlanningTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         duration_seconds(Path("voice.mp3"))
 
+    def test_empty_uploaded_media_rejected_before_voice(self):
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"visuel importé est vide"):
+                make_video("test","Bonjour",[b""])
+            with self.assertRaisesRegex(ValueError,"visuel importé est vide"):
+                make_video("test","Bonjour",[],video_bytes=[b""])
+        voice.assert_not_called()
+
     def test_rejects_oversized_video_before_voice(self):
         with patch("video_factory.require_ffmpeg"), \
              patch("video_factory.synthesize") as voice:
