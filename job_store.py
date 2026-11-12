@@ -40,6 +40,9 @@ def next_job():
         # Serialize claimers: two Streamlit sessions must not start the same job.
         con.execute("BEGIN IMMEDIATE")
         con.row_factory = sqlite3.Row
+        # Only one render may run at a time, even from separate browser tabs.
+        if con.execute("SELECT 1 FROM jobs WHERE status='running' LIMIT 1").fetchone():
+            return None
         row = con.execute("SELECT * FROM jobs WHERE status='queued' ORDER BY id LIMIT 1").fetchone()
         if row:
             con.execute("UPDATE jobs SET status='running' WHERE id=? AND status='queued'",(row["id"],))
