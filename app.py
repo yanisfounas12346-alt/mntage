@@ -4,6 +4,7 @@ from html import unescape
 from pathlib import Path
 import streamlit as st
 from video_factory import make_video
+from science_wtf import science_scenes, sample_script, TOPICS
 from tiktok_pro import audit_script, production_brief, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images, scene_prompts
@@ -28,8 +29,14 @@ st.markdown('<div class="hero"><small>MNTAGE / STUDIO IA</small><br><b>Ton scrip
 
 tab_create,tab_queue,tab_stats=st.tabs(["🎬 Créer","📂 File & historique","📊 Résultats"])
 with tab_create:
+    science_mode=st.checkbox("🧪 Science WTF — dessins originaux sans API payante",value=False)
+    science_topic=st.selectbox("Sujet Science WTF",list(TOPICS),format_func=lambda key: TOPICS[key][0]) if science_mode else "abysses"
+    if science_mode:
+        st.caption("Dessins originaux générés localement. Le script exemple est un brouillon : vérifie les faits et vise 70–85 secondes.")
+        if st.button("✍️ Charger un exemple de script"):
+            st.session_state["science_script"]=sample_script(science_topic)
     title=st.text_input("Titre","Mon premier Short")
-    script=st.text_area("Script",height=230,placeholder="Colle ton script…")
+    script=st.text_area("Script",height=230,placeholder="Colle ton script…",key="science_script")
     st.caption(f"{len(script.split())} mots · environ {round(len(script.split())/2.5)} secondes")
     with st.expander("🚀 TikTok Pro — SEO et monétisation",expanded=True):
         st.caption("Planification gratuite et locale. Aucun service IA payant n'est appelé.")
@@ -76,6 +83,7 @@ with tab_create:
         st.caption("Auto cherche de vraies vidéos sur Wikimedia Commons, sans clé. Les résultats dépendent du sujet ; crédits et licences à vérifier avant publication.")
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
+        if science_mode and not images and not user_clips:return science_scenes(script,science_topic)
         if images:return [i.getvalue() for i in images]
         if mode.startswith("IA cloud"):
             return generate_cloud_images(scene_prompts(script,visual_style,limit=cloud_count),
@@ -101,6 +109,8 @@ with tab_create:
                     elif images:
                         # The visuals() helper reads the uploaded images directly.
                         st.info("Images personnelles sélectionnées : recherche automatique ignorée.")
+                    elif science_mode:
+                        st.info("Mode Science WTF : illustrations locales, aucune génération cloud.")
                     elif mode.startswith("Auto"):
                         found,clips,missing=download_commons_scenes(script,limit=8)
                         if missing:st.warning("Scènes non illustrées : "+", ".join(missing))
@@ -124,6 +134,7 @@ with tab_create:
             except Exception as exc:st.error(f"Erreur : {exc}")
     if st.button("➕ Ajouter à la file d'attente",use_container_width=True):
         if not script.strip():st.warning("Colle ton script.")
+        elif science_mode:st.warning("Le mode Science WTF se génère directement : la file ne conserve pas encore ce réglage.")
         elif mode.startswith("IA cloud"):st.warning("Pour éviter toute dépense automatique, les images cloud sont uniquement générées immédiatement après confirmation.")
         elif music or images or user_clips or mode.startswith("Mes clips"):st.warning("Pour la file, utilise un mode sans fichiers personnels : les clips importés ne sont pas conservés.")
         else:
