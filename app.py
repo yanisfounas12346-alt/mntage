@@ -4,6 +4,7 @@ from html import unescape
 from pathlib import Path
 import streamlit as st
 from video_factory import make_video
+from motion_studio import render_mirror_preview, is_mirror_subject
 from science_wtf import free_script_scenes, script_scene_prompts, sample_script, TOPICS
 from tiktok_pro import audit_script, production_brief, seo_pack, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
@@ -30,11 +31,14 @@ st.markdown('<div class="hero"><small>MNTAGE / STUDIO IA</small><br><b>Ton scrip
 tab_create,tab_queue,tab_stats=st.tabs(["🎬 Créer","📂 File & historique","📊 Résultats"])
 with tab_create:
     science_mode=st.checkbox("🧪 Science WTF — format scientifique illustré",value=False)
-    science_source=st.radio("Illustrations Science WTF",["Gratuit — dessins locaux"] + (["Premium — illustrations IA fal.ai (payant)"] if cloud_configured() else []),horizontal=True) if science_mode else "Gratuit — dessins locaux"
+    science_source=st.radio("Illustrations Science WTF",["Studio animé 2D — miroir (gratuit)", "Gratuit — dessins locaux"] + (["Premium — illustrations IA fal.ai (payant)"] if cloud_configured() else []),horizontal=True) if science_mode else "Gratuit — dessins locaux"
+    studio_selected=science_mode and science_source.startswith("Studio animé")
     science_subject=st.text_input("Sujet libre Science WTF",value="Le miroir qui déforme ton visage") if science_mode else ""
     science_topic=st.selectbox("Exemples facultatifs",["Aucun"]+list(TOPICS),format_func=lambda key: TOPICS[key][0] if key in TOPICS else key) if science_mode else "Aucun"
     if science_mode:
-        st.caption("Dessins locaux gratuits ou illustrations fal.ai sur confirmation. Le script exemple est un brouillon : vérifie les faits et vise 70–85 secondes.")
+        st.caption("Studio animé 2D original disponible pour le miroir ; autres sujets : dessins locaux ou fal.ai. Le script reste à vérifier scientifiquement.")
+        if studio_selected:
+            st.info("NOUVEAU : vraies scènes animées pour le miroir. Décor, personnage, reflet et cerveau dessinés indépendamment, sans illustrations IA.")
         if science_topic != "Aucun" and st.button("✍️ Charger un exemple de script"):
             st.session_state["science_script"]=sample_script(science_topic)
     title=st.text_input("Titre","Mon premier Short")
@@ -86,7 +90,11 @@ with tab_create:
         if mode.startswith("IA cloud") or (science_mode and science_source.startswith("Premium")):
             st.caption(f"Coût prévisionnel avec marge : {estimate_eur(cloud_count):.4f} € ; réservé ce mois : {spent_eur():.4f} €. Prix et taux de change à vérifier chez fal.")
             cloud_approval=st.checkbox("J'autorise cet appel payant à fal.ai pour les images de cette vidéo.",value=False)
-        dynamic_edit=st.checkbox("⚡ Montage dynamique — personnage animé et coupes rapides",value=science_mode,help="Décor stable, personnage animé localement, sans coût IA supplémentaire.")
+        dynamic_edit=(st.checkbox("⚡ Montage dynamique — personnage animé et coupes rapides",value=science_mode,
+                          help="Ce mode classique superpose des éléments à des images fixes.")
+                      if not studio_selected else False)
+        if studio_selected:
+            st.caption("Animation 2D scénarisée : aucun autocollant ni zoom de caméra ajouté.")
         captions=st.checkbox("Sous-titres synchronisés avec la voix (si timestamps disponibles)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
@@ -94,6 +102,7 @@ with tab_create:
         st.caption("Auto cherche de vraies vidéos sur Wikimedia Commons, sans clé. Les résultats dépendent du sujet ; crédits et licences à vérifier avant publication.")
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
+        if studio_selected:return []
         if images:return [i.getvalue() for i in images]
         if science_mode and not user_clips:
             if science_source.startswith("Premium"):
@@ -110,6 +119,21 @@ with tab_create:
             st.info("Crédits des photos : "+", ".join(i["credit"] for i in items))
             return download_images(items)
         return script_to_images(script,title)
+    if studio_selected:
+        if st.button("👁️ Générer un aperçu animé de 8 secondes (gratuit)",use_container_width=True):
+            try:
+                with st.spinner("Rendu local du miroir animé…"):
+                    preview_dir=Path("outputs")
+                    preview_dir.mkdir(parents=True,exist_ok=True)
+                    preview_path=preview_dir / "apercu-miroir-science-wtf.mp4"
+                    render_mirror_preview(preview_path)
+                st.session_state["last_mirror_preview"]=str(preview_path)
+                st.success("Aperçu silencieux prêt : vérifie l'animation avant de générer l'épisode complet.")
+            except Exception as exc:
+                st.error(f"Aperçu impossible : {exc}")
+        preview_path=Path(st.session_state.get("last_mirror_preview",""))
+        if st.session_state.get("last_mirror_preview") and preview_path.is_file():
+            st.video(str(preview_path))
     if st.button("🎬 Créer ma vidéo maintenant",type="primary",use_container_width=True):
         if not script.strip():st.warning("Colle ton script.")
         else:
@@ -124,7 +148,9 @@ with tab_create:
                         # The visuals() helper reads the uploaded images directly.
                         st.info("Images personnelles sélectionnées : recherche automatique ignorée.")
                     elif science_mode:
-                        st.info("Mode Science WTF : " + ("illustrations IA fal.ai sur confirmation payante." if science_source.startswith("Premium") else "illustrations locales gratuites."))
+                        st.info("Mode Science WTF : " + ("studio d'animation 2D sans coût IA." if studio_selected
+                                 else "illustrations IA fal.ai sur confirmation payante." if science_source.startswith("Premium")
+                                 else "illustrations locales gratuites."))
                     elif mode.startswith("Auto"):
                         found,clips,missing=download_commons_scenes(script,limit=8)
                         if missing:st.warning("Scènes non illustrées : "+", ".join(missing))
@@ -139,7 +165,10 @@ with tab_create:
                         clips=download_videos(found)
                         st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
                         st.info("Montage automatique avec de vrais clips ; vérifie que chaque plan illustre correctement ton texte.")
-                    path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips,dynamic=dynamic_edit)
+                    path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,
+                                    music=music.getvalue() if music else None,voice_rate=voice_speed,
+                                    video_bytes=clips,dynamic=dynamic_edit,
+                                    motion_mode=studio_selected,motion_subject=science_subject)
                     if not science_mode and mode.startswith("Auto") and not user_clips and not images:
                         sources=st.session_state.get("commons_sources",[])
                         path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}" for x in sources),encoding="utf-8")
