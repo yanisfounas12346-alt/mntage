@@ -682,4 +682,25 @@ class LocalAIPromptTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scene_prompts("Bonjour",limit=13)
 
+class CloudSpendGuardTests(unittest.TestCase):
+    def test_cloud_estimate_and_confirmation(self):
+        from cloud_ai import estimate_eur, generate_cloud_images
+        self.assertGreater(estimate_eur(12),estimate_eur(1))
+        with self.assertRaises(ValueError):
+            estimate_eur(13)
+        with self.assertRaises(PermissionError):
+            generate_cloud_images(["ocean"],confirmed=False)
+
+    def test_cloud_local_monthly_cap(self):
+        import os
+        from unittest.mock import patch
+        from cloud_ai import _reserve, spent_eur
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ,{"MNTAGE_CLOUD_LEDGER":str(Path(tmp)/"spend.sqlite3")}):
+                self.assertEqual(spent_eur(),0)
+                _reserve(1,0.01)
+                self.assertGreater(spent_eur(),0)
+                with self.assertRaisesRegex(RuntimeError,"Plafond"):
+                    _reserve(12,0.01)
+
 if __name__=="__main__":unittest.main()
