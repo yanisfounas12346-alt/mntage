@@ -7,6 +7,7 @@ from video_factory import make_video
 from tiktok_pro import audit_script, production_brief, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images, scene_prompts
+from cloud_ai import configured as cloud_configured, generate_cloud_images, estimate_eur, spent_eur
 from job_store import enqueue, jobs, next_job, finish, retry_failed, recover_interrupted, cancel_queued, update_metrics, set_youtube
 from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes, select_commons_scenes, download_commons_scenes
 
@@ -57,10 +58,17 @@ with tab_create:
             modes.append("Vidéos Pexels — vrais clips (recommandé)")
         modes.append("Éco — fonds animés abstraits (démonstration)")
         if configured(): modes.append("IA locale — scènes originales (CPU ou AMD Vulkan)")
+        if cloud_configured(): modes.append("IA cloud — FLUX Schnell (payant, confirmation requise)")
         if os.environ.get("PEXELS_API_KEY"):
             modes.append("Photos Pexels — recherche automatique")
         mode=st.selectbox("Visuels",modes)
         ai_backend=st.selectbox("Accélération IA locale",["cpu","vulkan0"],help="Vulkan nécessite un binaire stable-diffusion.cpp compatible avec ta Radeon. Le CPU est plus universel.")
+        cloud_count=st.slider("Nombre de scènes cloud",min_value=1,max_value=12,value=8)
+        cloud_cap=st.number_input("Plafond local cloud (€ / mois)",min_value=1.0,max_value=30.0,value=15.0,step=1.0)
+        cloud_approval=False
+        if mode.startswith("IA cloud"):
+            st.caption(f"Coût prévisionnel avec marge : {estimate_eur(cloud_count):.4f} € ; réservé ce mois : {spent_eur():.4f} €. Prix et taux de change à vérifier chez fal.")
+            cloud_approval=st.checkbox("J'autorise cet appel payant à fal.ai pour les images de cette vidéo.",value=False)
         captions=st.checkbox("Sous-titres synchronisés avec la voix (si timestamps disponibles)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
@@ -69,6 +77,9 @@ with tab_create:
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
         if images:return [i.getvalue() for i in images]
+        if mode.startswith("IA cloud"):
+            return generate_cloud_images(scene_prompts(script,visual_style,limit=cloud_count),
+                confirmed=cloud_approval,cap_eur=cloud_cap)
         if mode.startswith("IA locale"):
             return generate_images(scene_prompts(script,visual_style,limit=12),backend=ai_backend,steps=12)
         if mode.startswith("Photos"):
@@ -113,6 +124,7 @@ with tab_create:
             except Exception as exc:st.error(f"Erreur : {exc}")
     if st.button("➕ Ajouter à la file d'attente",use_container_width=True):
         if not script.strip():st.warning("Colle ton script.")
+        elif mode.startswith("IA cloud"):st.warning("Pour éviter toute dépense automatique, les images cloud sont uniquement générées immédiatement après confirmation.")
         elif music or images or user_clips or mode.startswith("Mes clips"):st.warning("Pour la file, utilise un mode sans fichiers personnels : les clips importés ne sont pas conservés.")
         else:
             enqueue(title,script,mode,voice,captions,voice_speed)
