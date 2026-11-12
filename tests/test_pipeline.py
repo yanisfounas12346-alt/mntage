@@ -174,6 +174,20 @@ class VideoPlanningTests(unittest.TestCase):
                 make_video("test","Bonjour",[bytes(damaged)])
         voice.assert_not_called()
 
+    def test_music_requires_actual_mp3_stream(self):
+        from video_factory import validate_music_audio
+        with patch("video_factory.subprocess.run",
+                   return_value=SimpleNamespace(returncode=0,stdout='{"streams": []}')):
+            with self.assertRaisesRegex(ValueError,"sans piste audio"):
+                validate_music_audio(Path("fake.mp3"))
+        with patch("video_factory.subprocess.run",
+                   return_value=SimpleNamespace(returncode=0,stdout='{"streams":[{"codec_type":"audio","codec_name":"aac"}]}')):
+            with self.assertRaisesRegex(ValueError,"véritable fichier MP3"):
+                validate_music_audio(Path("fake.mp3"))
+        with patch("video_factory.subprocess.run",
+                   return_value=SimpleNamespace(returncode=0,stdout='{"streams":[{"codec_type":"audio","codec_name":"mp3"}]}')):
+            validate_music_audio(Path("valid.mp3"))
+
     def test_empty_music_rejected_before_voice(self):
         with patch("video_factory.require_ffmpeg"), \
              patch("video_factory.synthesize") as voice:
