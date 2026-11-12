@@ -10,13 +10,15 @@ def _api(endpoint,params):
     with urlopen(Request(url,headers={"Authorization":key,"User-Agent":"mntage/0.4"}),timeout=20) as response:
         return json.load(response)
 
-def scene_queries(script,limit=5):
+def scene_queries(script,limit=8):
     sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
     stop={"pour","dans","avec","sans","cette","comme","quand","alors","mais","plus","tout","tous","elles","nous","vous","leur","être","avoir","est","une","des","les","que","qui","sur","par","pas","son","ses","aux","ces","cela","c'est","d'un","d'une","dans","même","encore","peut","déjà","fait","très","vois","sont","dont","cette"}
     queries=[]
     for sentence in sentences[:limit]:
         words=[w.lower() for w in re.findall(r"[\wÀ-ÿ'-]+",sentence) if len(w)>3 and w.lower() not in stop]
-        query=" ".join(words[:4]) or "nature cinematic"
+        concepts=[(("nuage","ciel","visage"),"face shaped clouds sky"),(("cerveau","neurone"),"human brain science"),(("illusion","optique"),"optical illusion"),(("yeux","regard"),"close up human eye"),(("nature","forêt"),"cinematic forest"),(("espace","planète"),"space galaxy"),(("océan","mer"),"ocean waves"),(("ville","rue"),"city street")]
+        query=next((english for keywords,english in concepts if any(k in sentence.lower() for k in keywords)),None)
+        if not query:query=" ".join(words[:3]) or "cinematic nature"
         queries.append(query)
     return queries or ["cinematic nature"]
 
