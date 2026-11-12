@@ -56,6 +56,14 @@ def retry_failed(job_id):
             "WHERE id=? AND status='failed'",(job_id,))
         return result.rowcount == 1
 
+def recover_interrupted(job_id):
+    """Manual recovery only: never automatically reset an active render."""
+    with connect() as con:
+        result=con.execute(
+            "UPDATE jobs SET status='queued',error=NULL,video=NULL "
+            "WHERE id=? AND status='running'",(job_id,))
+        return result.rowcount == 1
+
 def update_metrics(job_id, views, revenue, costs):
     with connect() as con:
         con.execute("UPDATE jobs SET views=?,revenue=?,costs=? WHERE id=?",
