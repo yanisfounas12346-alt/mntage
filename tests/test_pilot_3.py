@@ -58,6 +58,17 @@ class PilotThreeTests(unittest.TestCase):
         self.assertEqual(handoff.load()["completed"], 0)
         self.assertEqual(handoff.load()["pending"]["request_id"], action["request_id"])
 
+    def test_same_old_commit_cannot_be_reused_for_two_optimizations(self):
+        pilot = pilot_3.PilotSession()
+        first = pilot.prepare()
+        pilot.confirm(first["request_id"], "Premier correctif", "abcdef12",
+                      verifier=lambda sha: None)
+        second = pilot.prepare()
+        with self.assertRaises(ValueError):
+            pilot.confirm(second["request_id"], "Second correctif factice",
+                          "ABCDEF12", verifier=lambda sha: None)
+        self.assertEqual(handoff.load()["completed"], 1)
+
     def test_invalid_commit_is_rejected_before_git_fetch(self):
         with patch.object(pilot_3.subprocess, "run") as run:
             with self.assertRaises(ValueError):
