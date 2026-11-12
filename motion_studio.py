@@ -319,7 +319,7 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
 
 
 def render_mirror_preview(destination: Path, seconds: float = 8.0) -> Path:
-    """Three compositions in eight seconds, with an animated speaking mouth."""
+    """Five story-driven cuts in eight seconds; silent lip-motion demonstration."""
     import tempfile
     if seconds <= 0 or seconds > 15:
         raise ValueError("L'aperçu doit durer entre 0 et 15 secondes.")
