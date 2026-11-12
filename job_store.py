@@ -37,10 +37,12 @@ def jobs(limit=100):
 
 def next_job():
     with connect() as con:
+        # Serialize claimers: two Streamlit sessions must not start the same job.
+        con.execute("BEGIN IMMEDIATE")
         con.row_factory = sqlite3.Row
         row = con.execute("SELECT * FROM jobs WHERE status='queued' ORDER BY id LIMIT 1").fetchone()
         if row:
-            con.execute("UPDATE jobs SET status='running' WHERE id=?",(row["id"],))
+            con.execute("UPDATE jobs SET status='running' WHERE id=? AND status='queued'",(row["id"],))
         return dict(row) if row else None
 
 def finish(job_id, video=None, error=None):
