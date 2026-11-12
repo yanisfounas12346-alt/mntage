@@ -174,6 +174,15 @@ class VideoPlanningTests(unittest.TestCase):
                 make_video("test","Bonjour",[bytes(damaged)])
         voice.assert_not_called()
 
+    def test_oversized_video_resolution_rejected(self):
+        from video_factory import inspect_source_video
+        payload={"streams":[{"width":7680,"height":4320,"duration":"5.0"}],
+                 "format":{"duration":"5.0"}}
+        with patch("video_factory.subprocess.run",
+                   return_value=SimpleNamespace(returncode=0,stdout=json.dumps(payload))):
+            with self.assertRaisesRegex(RuntimeError,"Clip trop grand"):
+                inspect_source_video(Path("8k.mp4"))
+
     def test_music_requires_actual_mp3_stream(self):
         from video_factory import validate_music_audio
         with patch("video_factory.subprocess.run",
