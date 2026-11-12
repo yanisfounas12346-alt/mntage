@@ -148,6 +148,35 @@ def walking_shoe_tip(foot, side, stride):
             foot[1] - 15 * math.sin(angle))
 
 
+
+UPPER_ARM_LENGTH = 42.0
+FOREARM_LENGTH = 43.0
+
+
+def walking_arm_pose(t, side):
+    """Return shoulder, elbow and wrist for a relaxed, alternating arm swing.
+
+    The wrists alternate in height, with a small phase lag relative to the
+    legs. A two-bone solve preserves upper/forearm lengths without changing
+    the timing of narration or the underlying walking animation.
+    """
+    if side not in (-1, 1):
+        raise ValueError("Expected arm side -1 or 1.")
+    phase = math.sin(6.2*t - 0.2)
+    opposite = phase if side == -1 else -phase
+    shoulder = (6.0*side, -20.0)
+    wrist = (side*(56.0+8.0*opposite), 21.0+11.0*opposite)
+    dx, dy = wrist[0]-shoulder[0], wrist[1]-shoulder[1]
+    length = math.hypot(dx, dy)
+    along = (UPPER_ARM_LENGTH**2-FOREARM_LENGTH**2+length**2)/(2*length)
+    height = math.sqrt(max(0.0, UPPER_ARM_LENGTH**2-along**2))
+    ux, uy = dx/length, dy/length
+    # The elbow bends outward from the torso, on both sides.
+    elbow = (shoulder[0]+ux*along+side*uy*height,
+             shoulder[1]+uy*along-side*ux*height)
+    return (shoulder, elbow, wrist)
+
+
 def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,progress=0.,root_x_at=None):
     """Articulated original character: brows, blinks, four mouth shapes and actions."""
     talk=min(1.,max(0.,mouth))
@@ -209,11 +238,9 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         left=[(-7,-20),(-54,-56),(-70,-92)]
         right=[(7,-20),(50,-67),(78,-111)]
     elif action=="walk":
-        # Swing arms against their respective legs, not in the same direction.
-        left=[(-6,-20),(-37-9*stride,-8),
-              (-57-18*stride,25-5*max(0.,-stride))]
-        right=[(6,-20),(37+9*stride,-8),
-               (57+18*stride,25-5*max(0.,stride))]
+        # Opposite, slightly delayed wrist swings and fixed-length arm bones.
+        left=walking_arm_pose(t,-1)
+        right=walking_arm_pose(t,1)
     else:
         wobble=math.sin(t*4)*(9 if talk>.1 else 3)
         left=[(-6,-20),(-45,-16),(-64,9+wobble)]
