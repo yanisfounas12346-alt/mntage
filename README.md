@@ -67,3 +67,21 @@ Dans Streamlit, coche **Ajouter des sous-titres automatiques** pour incruster de
 ## Publication
 
 `youtube_upload.py` reste une commande distincte, avec configuration OAuth Google Cloud. Il n'y a pas de publication automatique sans validation dans l'interface.
+
+## Studio v0.3 : file, médias et statistiques
+
+- Onglet **Créer** : script seul, visuels automatiques, narration, sous-titres estimés et musique MP3 personnelle facultative.
+- Onglet **File & historique** : ajouter des scripts, puis cliquer sur **Traiter la prochaine vidéo**. Les tâches sont stockées dans `outputs/mntage.sqlite3` et exécutées **manuellement**, une par une. Les fichiers musicaux et images importées ne sont pas stockés dans la file. Une tâche interrompue peut rester au statut `running` ; aucun mécanisme de reprise automatique n'est encore inclus.
+- Onglet **Résultats** : saisie manuelle des vues, revenus et coûts. Il ne s'agit pas de statistiques YouTube synchronisées.
+- **YouTube** : après une génération via la file, configure `client_secret.json` OAuth Desktop dans le dossier du projet, confirme l'envoi et clique sur **Envoyer sur YouTube en privé**. L'API YouTube Data et l'écran de consentement doivent être configurés dans Google Cloud. Aucune publication publique automatique.
+- **Pexels** : option facultative avec clé API gratuite (quotas et conditions applicables). Dans PowerShell : `$env:PEXELS_API_KEY = "TA_CLE"` avant de lancer Streamlit. La recherche utilise le titre, non une compréhension sémantique détaillée de chaque scène. Vérifie les droits et conserve les crédits des photographes.
+
+Les visuels générés par le mode Éco sont des cartes graphiques. Les images IA nécessitent stable-diffusion.cpp et un modèle compatibles, téléchargés séparément. La synchronisation des sous-titres est approximative, les effets restent des zooms simples et la voix Edge TTS nécessite Internet. **Ces fonctionnalités n'ont pas été validées par un test de bout en bout sur Windows.**
+
+Pour vérifier rapidement les imports :
+
+```powershell
+cd $HOME\mntage
+.\.venv\Scripts\python.exe -m compileall -q .
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
