@@ -131,6 +131,23 @@ def walk_pose_with_translation(t, root_x_at, *, scale=1.0):
     return sway, bob, tuple(adjusted), stride
 
 
+
+def walking_shoe_tip(foot, side, stride):
+    """Return a toe joint that dorsiflexes smoothly during foot clearance.
+
+    The planted shoe remains flat (toe at ankle height). The lifted shoe
+    raises its toe progressively, then becomes flat again before touchdown.
+    This only rotates the shoe: ankle positions and ground anchors stay intact.
+    """
+    if side not in (-1, 1):
+        raise ValueError("Expected left (-1) or right (1) leg.")
+    airborne = max(0.0, stride if side == -1 else -stride)
+    # A quadratic envelope has zero first derivative at liftoff/landing.
+    angle = math.radians(28) * airborne * airborne
+    return (foot[0] + 15 * side * math.cos(angle),
+            foot[1] - 15 * math.sin(angle))
+
+
 def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,progress=0.,root_x_at=None):
     """Articulated original character: brows, blinks, four mouth shapes and actions."""
     talk=min(1.,max(0.,mouth))
@@ -171,7 +188,8 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         stroke([hip,knee,foot],WHITE,11)
         # The shoe follows its foot off the ground; previously it stayed
         # glued to y=159 while the leg moved independently.
-        toe=(foot[0]+15*sign,foot[1])
+        toe=(walking_shoe_tip(foot, sign, stride) if walking
+             else (foot[0]+15*sign, foot[1]))
         stroke([foot,toe],INK,7)
         stroke([foot,toe],YELLOW if sign==1 else WHITE,3)
     if not mirror:
