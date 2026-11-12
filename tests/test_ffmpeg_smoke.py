@@ -11,6 +11,32 @@ from video_factory import inspect_source_video, validate_output
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                      "FFmpeg and ffprobe not installed")
 class FFmpegSmokeTests(unittest.TestCase):
+    def test_two_scene_concat_with_audio(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work=Path(tmp)
+            segments=[]
+            for i,color in enumerate(("red","blue")):
+                segment=work/f"scene_{i}.mp4"
+                cmd=["ffmpeg","-hide_banner","-loglevel","error","-y",
+                     "-f","lavfi","-i",f"color=c={color}:s=1080x1920:r=25:d=0.6",
+                     "-c:v","libx264","-preset","ultrafast","-crf",str(26+i),
+                     "-pix_fmt","yuv420p",str(segment)]
+                result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
+                self.assertEqual(result.returncode,0,result.stderr[-1000:])
+                segments.append(segment)
+            playlist=work/"clips.txt"
+            playlist.write_text("".join(f"file '{p.name}'\\n" for p in segments))
+            target=work/"combined.mp4"
+            cmd=["ffmpeg","-hide_banner","-loglevel","error","-y",
+                 "-f","concat","-safe","0","-i",str(playlist),
+                 "-f","lavfi","-i","sine=frequency=440:sample_rate=44100:duration=1.2",
+                 "-map","0:v:0","-map","1:a:0","-t","1.2",
+                 "-c:v","libx264","-preset","ultrafast","-crf","30",
+                 "-pix_fmt","yuv420p","-c:a","aac",str(target)]
+            result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
+            self.assertEqual(result.returncode,0,result.stderr[-1000:])
+            validate_output(target,1.2)
+
     def test_synthetic_vertical_mp4_with_audio(self):
         with tempfile.TemporaryDirectory() as tmp:
             target=Path(tmp)/"smoke.mp4"
