@@ -174,6 +174,28 @@ class VideoPlanningTests(unittest.TestCase):
                 make_video("test","Bonjour",[bytes(damaged)])
         voice.assert_not_called()
 
+    def test_invalid_mp4_rejected_before_voice(self):
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.inspect_source_video",side_effect=RuntimeError("Flux vidéo absent")), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Clip MP4 1 invalide"):
+                make_video("test","Bonjour",[],video_bytes=[b"not an mp4"])
+        voice.assert_not_called()
+
+    def test_all_mp4_clips_are_checked_before_voice(self):
+        calls=[]
+        def inspect(path):
+            calls.append(path.name)
+            if path.name=="source_001.mp4":
+                raise RuntimeError("Clip illisible")
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.inspect_source_video",side_effect=inspect), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Clip MP4 2 invalide"):
+                make_video("test","Bonjour",[],video_bytes=[b"first",b"second"])
+        self.assertEqual(calls,["source_000.mp4","source_001.mp4"])
+        voice.assert_not_called()
+
     def test_corrupt_image_rejected_before_voice(self):
         with patch("video_factory.require_ffmpeg"), \
              patch("video_factory.synthesize") as voice:
