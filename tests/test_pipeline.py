@@ -93,8 +93,8 @@ class VideoPlanningTests(unittest.TestCase):
             if "broken" in url:
                 raise RuntimeError("HTTP 404")
             return b"valid-video"
-        with patch("stock_media.scene_queries",return_value=["forest trees"]), \\
-             patch("stock_media.search_commons_videos",return_value=options), \\
+        with patch("stock_media.scene_queries",return_value=["forest trees"]), \
+             patch("stock_media.search_commons_videos",return_value=options), \
              patch("stock_media._download",side_effect=fetch):
             found,clips,missing=download_commons_scenes("Une forêt.",limit=1)
         self.assertEqual(found[0]["id"],2)
