@@ -1,7 +1,7 @@
 """Optional Pexels stock media search; attribution and license review remain user's responsibility."""
 import os,json,re
 from urllib.request import Request,urlopen
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 def _api(endpoint,params):
     key=os.environ.get("PEXELS_API_KEY","").strip()
@@ -62,9 +62,24 @@ def search_images(query,limit=4):
     return [{"url":p["src"]["large"],"credit":p.get("photographer",""),"page":p.get("url","")} for p in data.get("photos",[])]
 
 def _download(url,max_bytes):
-    with urlopen(Request(url,headers={"User-Agent":"mntage/0.4"}),timeout=45) as response:
+    """Download bounded media over HTTPS; reject HTML error pages and empty files."""
+    parsed=urlparse(url)
+    if parsed.scheme!="https" or not parsed.hostname:
+        raise RuntimeError("Source média non sécurisée : HTTPS requis.")
+    request=Request(url,headers={
+        "User-Agent":"mntage/1.0 (https://github.com/yanisfounas12346-alt/mntage)"})
+    with urlopen(request,timeout=45) as response:
+        length=response.headers.get("Content-Length")
+        if length and int(length)>max_bytes:
+            raise RuntimeError("Média trop volumineux (taille annoncée).")
+        content_type=response.headers.get("Content-Type","").split(";")[0].strip().lower()
+        if content_type in {"text/html","application/json","text/plain"}:
+            raise RuntimeError("Le serveur a renvoyé une page au lieu d'un média.")
         data=response.read(max_bytes+1)
-    if len(data)>max_bytes:raise RuntimeError("Média trop volumineux.")
+    if not data:
+        raise RuntimeError("Le fichier média téléchargé est vide.")
+    if len(data)>max_bytes:
+        raise RuntimeError("Média trop volumineux.")
     return data
 
 def download_images(items):
@@ -138,7 +153,7 @@ def search_commons_videos(query, limit=6):
             "gsrnamespace":6,"gsrlimit":max(5,min(limit*3,30)),
             "prop":"imageinfo","iiprop":"url|size|mime|extmetadata","iiextmetadatafilter":"LicenseShortName|LicenseUrl|Artist|Credit","format":"json"}
     url="https://commons.wikimedia.org/w/api.php?"+urlencode(params)
-    with urlopen(Request(url,headers={"User-Agent":"mntage/1.0 (educational video creator; contact via GitHub)"}),timeout=25) as response:
+    with urlopen(Request(url,headers={"User-Agent":"mntage/1.0 (https://github.com/yanisfounas12346-alt/mntage)"}),timeout=25) as response:
         data=json.load(response)
     allowed={"cc0","cc0 1.0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0","cc by 4.0","cc by 3.0","cc by 2.0"}
     found=[]
