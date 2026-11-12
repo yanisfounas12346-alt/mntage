@@ -211,6 +211,21 @@ def select_commons_scenes(script,limit=8):
     return chosen,missing
 
 
+def _valid_video_payload(payload):
+    """Reject corrupt/low-resolution footage before accepting a Commons candidate."""
+    import tempfile
+    from pathlib import Path
+    from video_factory import inspect_source_video
+    with tempfile.TemporaryDirectory() as directory:
+        path=Path(directory)/"candidate.video"
+        path.write_bytes(payload)
+        try:
+            inspect_source_video(path)
+        except (OSError,RuntimeError,ValueError):
+            return False
+    return True
+
+
 def download_commons_scenes(script, limit=8):
     """Try alternative licensed footage when a Commons clip cannot be downloaded."""
     selected, payloads, missing = [], [], []
@@ -230,6 +245,8 @@ def download_commons_scenes(script, limit=8):
                 break
             try:
                 payload=_download(candidate["url"],min(35*1024*1024,remaining))
+                if not _valid_video_payload(payload):
+                    continue
             except (OSError,RuntimeError,ValueError):
                 continue
             selected.append(candidate)
