@@ -1,11 +1,13 @@
 """Persistent local queue and history; one job at a time, no background worker."""
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 DB = Path("outputs") / "mntage.sqlite3"
 
+@contextmanager
 def connect():
     DB.parent.mkdir(exist_ok=True)
     con = sqlite3.connect(DB)
@@ -22,7 +24,11 @@ def connect():
     if "voice_rate" not in columns:
         con.execute("ALTER TABLE jobs ADD COLUMN voice_rate TEXT NOT NULL DEFAULT '-5%'")
     con.commit()
-    return con
+    try:
+        with con:
+            yield con
+    finally:
+        con.close()
 
 def enqueue(title, script, mode, voice, captions, voice_rate="-5%"):
     with connect() as con:
