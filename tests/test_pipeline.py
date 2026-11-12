@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from stock_media import scene_queries, select_video_scenes
-from subtitles import write_srt, write_ass
+from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 
 class VideoPlanningTests(unittest.TestCase):
     def test_scene_topics(self):
@@ -18,6 +18,20 @@ class VideoPlanningTests(unittest.TestCase):
             selected,missing=select_video_scenes("Une forêt. Un océan.",8)
         self.assertEqual([v["id"] for v in selected],[1,2])
         self.assertFalse(missing)
+    def test_real_word_timing(self):
+        words=[
+            {"text":"Bonjour","offset":1000000,"duration":2000000},
+            {"text":"le","offset":3500000,"duration":1000000},
+            {"text":"monde","offset":5000000,"duration":2500000},
+        ]
+        groups=timed_groups(words)
+        self.assertEqual(len(groups),1)
+        self.assertAlmostEqual(groups[0][0],0.1)
+        self.assertAlmostEqual(groups[0][1],0.75)
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"timed.srt"
+            write_timed_srt(words,path)
+            self.assertIn("00:00:00,100 --> 00:00:00,750",path.read_text(encoding="utf-8"))
     def test_short_subtitles(self):
         with tempfile.TemporaryDirectory() as tmp:
             srt=Path(tmp)/"test.srt"
