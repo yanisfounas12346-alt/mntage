@@ -258,9 +258,11 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
             _actor(p,135,685,.79,t,mouth=mouth,action="point",progress=progress)
     else:
         if mode==1:
-            _actor(p,256,650,1.23,t,mouth=mouth,action="inspect",feeling="curious",progress=progress)
-            _circle(p,416,348,40,CYAN,3)
-            p.ellipse((393,332,440,369),PANEL2,outline=CYAN,width=3)
+            # A speaking character always shares the screen with the actual
+            # story object, not an unrelated decorative target circle.
+            _mirror(p,413,454,164,335,t,distortion=.12*_ease_out(progress))
+            _actor(p,209,650,1.09,t,mouth=mouth,action="inspect",
+                   feeling="curious",progress=progress)
         elif mode==2:
             _mirror(p,277,474,332,454,t,distortion=.10*_ease(progress))
             _actor(p,94,707,.48,t,mouth=mouth,action="inspect",progress=progress)
