@@ -113,7 +113,8 @@ class QueueNarrationTests(unittest.TestCase):
         import job_store
         with tempfile.TemporaryDirectory() as tmp:
             db=Path(tmp)/"old.sqlite3"
-            with sqlite3.connect(db) as con:
+            con=sqlite3.connect(db)
+            try:
                 con.execute("""CREATE TABLE jobs (
                     id INTEGER PRIMARY KEY, created TEXT NOT NULL, title TEXT NOT NULL,
                     script TEXT NOT NULL, mode TEXT NOT NULL, voice TEXT NOT NULL,
@@ -121,6 +122,9 @@ class QueueNarrationTests(unittest.TestCase):
                     video TEXT, error TEXT, views INTEGER NOT NULL DEFAULT 0,
                     revenue REAL NOT NULL DEFAULT 0, costs REAL NOT NULL DEFAULT 0,
                     youtube_url TEXT)""")
+                con.commit()
+            finally:
+                con.close()
             with patch.object(job_store,"DB",db):
                 with job_store.connect() as con:
                     columns=[row[1] for row in con.execute("PRAGMA table_info(jobs)")]
@@ -485,7 +489,7 @@ class VideoPlanningTests(unittest.TestCase):
             path.write_bytes(b"video")
             metadata={"streams":[{"width":1280,"height":720}],
                       "format":{"duration":"4.5"}}
-            with patch("video_factory.subprocess.run",return_value=SimpleNamespace(
+            with patch("video_factory.subprocess.run",side_effect=lambda *args, **kwargs: SimpleNamespace(
                     returncode=0,stdout=json.dumps(metadata),stderr="")):
                 self.assertEqual(inspect_source_video(path)["width"],1280)
                 metadata["streams"][0]["height"]=240
