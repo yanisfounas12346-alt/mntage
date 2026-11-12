@@ -64,6 +64,11 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertEqual(len(results),1)
         self.assertEqual(results[0]["id"],2)
 
+    def test_short_video_has_no_micro_scenes(self):
+        durations=scene_durations(2.0,[],1)
+        self.assertEqual(len(durations),1)
+        self.assertAlmostEqual(sum(durations),2.0)
+
     def test_export_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
             video=Path(tmp)/"test.mp4"
