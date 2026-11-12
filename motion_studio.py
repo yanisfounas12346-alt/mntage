@@ -169,6 +169,24 @@ def _background(size, scene_kind):
         p.line([(0, y), (540, y)], (21, 37, 55), 1)
     p.ellipse((-175, -200, 240, 210), outline=(23, 82, 87), width=3)
     p.ellipse((375, 90, 710, 425), outline=(23, 71, 80), width=2)
+    # Stage depth: grounded floor and a restrained laboratory wall, not floating props.
+    # These are static set pieces, while actors and scientific objects animate.
+    p.rect((0, 805, 540, 960), (16, 34, 49))
+    p.line([(0, 805), (540, 805)], (43, 94, 103), 3)
+    p.line([(0, 960), (231, 805)], (22, 55, 68), 2)
+    p.line([(540, 960), (308, 805)], (22, 55, 68), 2)
+    if scene_kind in ("brain", "neural", "vision"):
+        p.ellipse((49, 240, 492, 754), outline=(31, 78, 88), width=3)
+        for x, y in ((73, 332), (460, 341), (80, 610), (455, 650)):
+            p.ellipse((x-8, y-8, x+8, y+8), CYAN if y % 2 else (53, 123, 133))
+        p.line([(73, 332), (80, 610)], (30, 75, 85), 2)
+        p.line([(460, 341), (455, 650)], (30, 75, 85), 2)
+    else:
+        p.rect((45, 226, 495, 785), (18, 35, 51), radius=34,
+               outline=(33, 67, 80), width=2)
+        p.d.polygon([p.p(466, 241), p.p(363, 780), p.p(493, 780)],
+                    fill=(21, 44, 56))
+        p.line([(63, 759), (476, 759)], (29, 67, 78), 2)
     p.rect((34, 45, 506, 53), CYAN, radius=4)
     p.rect((34, 87, 119, 94), YELLOW, radius=3)
     p.text((37, 124), "SCIENCE WTF", WHITE, 20, anchor="lm")
