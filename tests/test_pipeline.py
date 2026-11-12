@@ -39,6 +39,14 @@ class VideoPlanningTests(unittest.TestCase):
                 os.chdir(previous)
         self.assertEqual(clips[0]["url"],"https://example.org/small.mp4")
 
+    def test_invalid_media_redirect_url_rejected(self):
+        response=io.BytesIO(b"video")
+        response.headers={"Content-Type":"video/mp4"}
+        response.geturl=lambda: None
+        with patch("stock_media.urlopen",return_value=response):
+            with self.assertRaisesRegex(RuntimeError,"URL finale"):
+                _download("https://example.org/clip.mp4",1024)
+
     def test_insecure_media_redirect_rejected(self):
         response=io.BytesIO(b"video")
         response.headers={"Content-Type":"video/mp4"}
