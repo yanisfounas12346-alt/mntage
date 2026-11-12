@@ -49,9 +49,12 @@ def next_job():
         return dict(row) if row else None
 
 def finish(job_id, video=None, error=None):
+    """Complete only a running render; never overwrite cancelled or retried jobs."""
     with connect() as con:
-        con.execute("UPDATE jobs SET status=?,video=?,error=? WHERE id=?",
-                    ("failed" if error else "done",str(video) if video else None,error,job_id))
+        result = con.execute(
+            "UPDATE jobs SET status=?,video=?,error=? WHERE id=? AND status='running'",
+            ("failed" if error else "done",str(video) if video else None,error,job_id))
+        return result.rowcount == 1
 
 def cancel_queued(job_id):
     """Cancel only pending jobs; never interrupt an active FFmpeg render."""
