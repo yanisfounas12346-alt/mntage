@@ -71,7 +71,7 @@ class FFmpegSmokeTests(unittest.TestCase):
                 self.assertEqual(result.returncode,0,result.stderr[-1000:])
                 segments.append(segment)
             playlist=work/"clips.txt"
-            playlist.write_text("".join(f"file '{p.name}'\\n" for p in segments))
+            playlist.write_text("".join(f"file '{p.name}'\n" for p in segments))
             target=work/"combined.mp4"
             cmd=["ffmpeg","-hide_banner","-loglevel","error","-y",
                  "-f","concat","-safe","0","-i",str(playlist),
