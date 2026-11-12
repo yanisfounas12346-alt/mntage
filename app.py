@@ -1,5 +1,6 @@
 import os
 import re
+from html import unescape
 from pathlib import Path
 import streamlit as st
 from video_factory import make_video
@@ -83,7 +84,7 @@ with tab_create:
                     path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips)
                     if mode.startswith("Auto"):
                         sources=st.session_state.get("commons_sources",[])
-                        path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | {x['license']} | {x['page']}" for x in sources),encoding="utf-8")
+                        path.with_suffix(".sources.txt").write_text("\n".join(f"{x['title']} | Auteur: {unescape(re.sub(r'<[^>]+>', '', x.get('credit','')))} | Licence: {x['license']} | Source: {x['page']}" for x in sources),encoding="utf-8")
                 st.session_state["last_video"]=str(path)
                 st.success("Vidéo prête. Vérifie les images et les droits avant publication.")
             except Exception as exc:st.error(f"Erreur : {exc}")
@@ -99,6 +100,7 @@ with tab_create:
             st.video(str(p))
             st.download_button("⬇️ Télécharger MP4",p.read_bytes(),file_name=p.name,mime="video/mp4",use_container_width=True)
             if p.with_suffix(".srt").exists():st.download_button("Sous-titres SRT",p.with_suffix(".srt").read_bytes(),file_name=p.with_suffix(".srt").name)
+            if p.with_suffix(".sources.txt").exists():st.download_button("Crédits des vidéos",p.with_suffix(".sources.txt").read_bytes(),file_name=p.with_suffix(".sources.txt").name)
 with tab_queue:
     st.caption("File locale persistante. Les tâches s'exécutent une par une, lorsque tu cliques. Pas de processus en arrière-plan.")
     if st.button("▶️ Traiter la prochaine vidéo",type="primary",use_container_width=True):
