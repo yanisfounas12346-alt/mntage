@@ -8,7 +8,7 @@ from pathlib import Path
 from io import BytesIO
 import edge_tts
 from PIL import Image, ImageOps
-from subtitles import write_srt, write_ass
+from subtitles import write_srt, write_ass, write_timed_srt, write_timed_ass
 
 OUT = Path("outputs").resolve()
 OUT.mkdir(exist_ok=True)
@@ -27,7 +27,16 @@ def duration_seconds(audio: Path) -> float:
     return float(r.stdout.strip())
 
 async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5%"):
-    await edge_tts.Communicate(script, voice=voice, rate=rate).save(str(destination))
+    boundaries=[]
+    with destination.open("wb") as audio:
+        async for chunk in edge_tts.Communicate(script, voice=voice, rate=rate).stream():
+            if chunk["type"]=="audio":
+                audio.write(chunk["data"])
+            elif chunk["type"]=="WordBoundary":
+                boundaries.append({"offset":chunk["offset"],"duration":chunk["duration"],"text":chunk["text"]})
+    if not destination.stat().st_size:
+        raise RuntimeError("La synthèse vocale n'a produit aucun audio.")
+    return boundaries
 
 def _run(args):
     result = subprocess.run(args, capture_output=True, text=True)
@@ -48,7 +57,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         audio = work / "voice.mp3"
-        asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
+        boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
         duration = duration_seconds(audio)
         count = len(video_bytes) if video_bytes else len(image_bytes)
         per_image = duration / count
@@ -93,8 +102,12 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
               "-movflags","+faststart",str(base)])
         filters = []
         if captions:
-            srt = write_srt(script, duration, work / "captions.srt")
-            write_ass(script, duration, work / "captions.ass")
+            if boundaries:
+                srt = write_timed_srt(boundaries, work / "captions.srt")
+                write_timed_ass(boundaries, work / "captions.ass")
+            else:
+                srt = write_srt(script, duration, work / "captions.srt")
+                write_ass(script, duration, work / "captions.ass")
             # Use forward-slash relative filename from cwd to avoid Windows drive colon.
             filters.append("ass=captions.ass")
         if music:
