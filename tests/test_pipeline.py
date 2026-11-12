@@ -643,8 +643,6 @@ class VideoPlanningTests(unittest.TestCase):
             self.assertIn("00:00:00,000 -->",srt.read_text(encoding="utf-8"))
             self.assertIn("Un deux trois quatre",srt.read_text(encoding="utf-8"))
             self.assertIn("Style: Caption",ass.read_text(encoding="utf-8-sig"))
-if __name__=="__main__":unittest.main()
-
 class TikTokProPlanningTests(unittest.TestCase):
     def test_duration_target_and_keyword(self):
         from tiktok_pro import audit_script
@@ -665,3 +663,5 @@ class TikTokProPlanningTests(unittest.TestCase):
         self.assertIn("océan",brief)
         with self.assertRaises(ValueError):
             production_brief("","océan")
+
+if __name__=="__main__":unittest.main()
