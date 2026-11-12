@@ -1,25 +1,47 @@
-"""Optional Pexels image search. Requires free user API key and review of licenses."""
-import os
-import json
-from urllib.request import Request, urlopen
+"""Optional Pexels stock media search; attribution and license review remain user's responsibility."""
+import os,json,re
+from urllib.request import Request,urlopen
 from urllib.parse import urlencode
 
-def search_images(query: str, limit: int = 4):
-    key = os.environ.get("PEXELS_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("PEXELS_API_KEY manquante.")
-    url = "https://api.pexels.com/v1/search?" + urlencode({"query":query[:100],"per_page":min(10,max(1,limit)),"orientation":"portrait"})
-    req = Request(url,headers={"Authorization":key,"User-Agent":"mntage/0.2"})
-    with urlopen(req,timeout=15) as response:
-        data = json.load(response)
+def _api(endpoint,params):
+    key=os.environ.get("PEXELS_API_KEY","").strip()
+    if not key:raise RuntimeError("Ajoute PEXELS_API_KEY dans PowerShell.")
+    url="https://api.pexels.com/"+endpoint+"?"+urlencode(params)
+    with urlopen(Request(url,headers={"Authorization":key,"User-Agent":"mntage/0.4"}),timeout=20) as response:
+        return json.load(response)
+
+def scene_queries(script,limit=5):
+    sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",script) if s.strip()]
+    stop={"pour","dans","avec","sans","cette","comme","quand","alors","mais","plus","tout","tous","elles","nous","vous","leur","être","avoir","est","une","des","les","que","qui","sur","par","pas","son","ses","aux","ces","cela","c'est","d'un","d'une","dans","même","encore","peut","déjà","fait","très","vois","sont","dont","cette"}
+    queries=[]
+    for sentence in sentences[:limit]:
+        words=[w.lower() for w in re.findall(r"[\wÀ-ÿ'-]+",sentence) if len(w)>3 and w.lower() not in stop]
+        query=" ".join(words[:4]) or "nature cinematic"
+        queries.append(query)
+    return queries or ["cinematic nature"]
+
+def search_videos(query,limit=3):
+    data=_api("videos/search",{"query":query[:100],"per_page":min(10,max(1,limit)),"orientation":"portrait"})
+    out=[]
+    for video in data.get("videos",[]):
+        files=[f for f in video.get("video_files",[]) if f.get("file_type")=="video/mp4" and f.get("link")]
+        files.sort(key=lambda f:(abs(f.get("width",540)-540)+abs(f.get("height",960)-960)))
+        if files:
+            out.append({"url":files[0]["link"],"credit":video.get("user",{}).get("name",""),"page":video.get("url",""),"duration":video.get("duration",0)})
+    return out
+
+def search_images(query,limit=4):
+    data=_api("v1/search",{"query":query[:100],"per_page":min(10,max(1,limit)),"orientation":"portrait"})
     return [{"url":p["src"]["large"],"credit":p.get("photographer",""),"page":p.get("url","")} for p in data.get("photos",[])]
 
+def _download(url,max_bytes):
+    with urlopen(Request(url,headers={"User-Agent":"mntage/0.4"}),timeout=45) as response:
+        data=response.read(max_bytes+1)
+    if len(data)>max_bytes:raise RuntimeError("Média trop volumineux.")
+    return data
+
 def download_images(items):
-    result=[]
-    for item in items:
-        req=Request(item["url"],headers={"User-Agent":"mntage/0.2"})
-        with urlopen(req,timeout=20) as response:
-            raw=response.read(8*1024*1024+1)
-            if len(raw)>8*1024*1024: raise ValueError("Image trop volumineuse")
-            result.append(raw)
-    return result
+    return [_download(i["url"],8*1024*1024) for i in items]
+
+def download_videos(items):
+    return [_download(i["url"],55*1024*1024) for i in items]
