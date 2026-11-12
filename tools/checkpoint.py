@@ -74,13 +74,13 @@ def _check_media_tools() -> list[dict]:
         subtitle = _run("filtre ASS (sous-titres)", command, 30,
                         output_limit=100000)
         if subtitle["ok"] and not re.search(
-            r"(?m)^\\s*\\S+\\s+ass\\s+", subtitle["output"]
+            r"(?m)^\s*\S+\s+ass\s+", subtitle["output"]
         ):
             subtitle["ok"] = False
             subtitle["exit_code"] = 1
             subtitle["output"] = (
                 "Le filtre 'ass' est absent de ce FFmpeg : export de "
-                "sous-titres incompatible.\\n" + subtitle["output"][-2000:]
+                "sous-titres incompatible.\n" + subtitle["output"][-2000:]
             )
     else:
         subtitle = {
