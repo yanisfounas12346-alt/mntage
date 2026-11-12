@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download, download_videos
+from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download, download_videos, download_commons_scenes
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output, inspect_source_video
 
@@ -84,6 +84,22 @@ class VideoPlanningTests(unittest.TestCase):
                 metadata["format"]["duration"]="0.1"
                 with self.assertRaisesRegex(RuntimeError,"trop court"):
                     inspect_source_video(path)
+
+    def test_commons_retries_failed_clip(self):
+        options=[
+            {"id":1,"url":"https://example.org/broken.webm"},
+            {"id":2,"url":"https://example.org/good.webm"}]
+        def fetch(url,limit):
+            if "broken" in url:
+                raise RuntimeError("HTTP 404")
+            return b"valid-video"
+        with patch("stock_media.scene_queries",return_value=["forest trees"]), \\
+             patch("stock_media.search_commons_videos",return_value=options), \\
+             patch("stock_media._download",side_effect=fetch):
+            found,clips,missing=download_commons_scenes("Une forêt.",limit=1)
+        self.assertEqual(found[0]["id"],2)
+        self.assertEqual(clips,[b"valid-video"])
+        self.assertFalse(missing)
 
     def test_download_videos_limits_each_source(self):
         with patch("stock_media._download",return_value=b"video") as download:
