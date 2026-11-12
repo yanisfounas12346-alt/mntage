@@ -6,7 +6,7 @@ import streamlit as st
 from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
-from job_store import enqueue, jobs, next_job, finish, retry_failed, recover_interrupted, update_metrics, set_youtube
+from job_store import enqueue, jobs, next_job, finish, retry_failed, recover_interrupted, cancel_queued, update_metrics, set_youtube
 from stock_media import search_images, download_images, search_videos, download_videos, scene_queries, select_video_scenes, select_pixabay_scenes, select_commons_scenes, download_commons_scenes
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
@@ -151,6 +151,13 @@ with tab_queue:
     for job in history:
         with st.expander(f"#{job['id']} · {job['title']} · {job['status']}"):
             st.caption(job["created"])
+            if job["status"]=="queued":
+                if st.button("✖ Annuler cette tâche",key=f"cancel_{job['id']}"):
+                    if cancel_queued(job["id"]):
+                        st.success("Tâche annulée avant le montage.")
+                        st.rerun()
+                    else:
+                        st.warning("Cette tâche a déjà commencé ou son statut a changé.")
             if job["error"]:st.error(job["error"])
             if job["status"]=="failed":
                 if st.button("🔄 Réessayer cette vidéo",key=f"retry_{job['id']}"):
