@@ -59,6 +59,18 @@ class QueueNarrationTests(unittest.TestCase):
             self.assertEqual(job_store.next_job()["id"],second)
             self.assertIsNone(job_store.next_job())
 
+    def test_cancel_only_pending_jobs(self):
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(job_store,"DB",Path(tmp)/"queue.sqlite3"):
+            first=job_store.enqueue("Annuler","Texte","Éco","fr-FR-DeniseNeural",True)
+            self.assertTrue(job_store.cancel_queued(first))
+            self.assertFalse(job_store.cancel_queued(first))
+            self.assertIsNone(job_store.next_job())
+            second=job_store.enqueue("Garder","Texte","Éco","fr-FR-DeniseNeural",True)
+            self.assertEqual(job_store.next_job()["id"],second)
+            self.assertFalse(job_store.cancel_queued(second))
+
     def test_existing_database_gets_voice_rate_default(self):
         import sqlite3
         import job_store
