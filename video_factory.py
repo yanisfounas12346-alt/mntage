@@ -156,6 +156,8 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         raise ValueError("Chaque image doit faire au maximum 20 Mo.")
     if sum(map(len,image_bytes)) > 100*1024*1024:
         raise ValueError("Les images dépassent la limite totale de 100 Mo.")
+    if music is not None and (not music or len(music)>30*1024*1024):
+        raise ValueError("La musique MP3 doit être non vide et faire au maximum 30 Mo.")
     # Check image headers and pixel budgets before contacting the TTS service.
     if not video_bytes:
         import warnings
@@ -185,6 +187,13 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     except (RuntimeError, OSError, ValueError) as exc:
                         raise ValueError(f"Clip MP4 {idx + 1} invalide : {exc}") from exc
                     source_paths[idx] = source
+            if music is not None:
+                music_path = work / "music.mp3"
+                music_path.write_bytes(music)
+                try:
+                    duration_seconds(music_path)
+                except (RuntimeError, OSError, ValueError) as exc:
+                    raise ValueError("Musique MP3 invalide ou illisible.") from exc
             audio = work / "voice.mp3"
             boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
             duration = duration_seconds(audio)
@@ -243,9 +252,6 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     write_ass(script, duration, work / "captions.ass")
                 # Use forward-slash relative filename from cwd to avoid Windows drive colon.
                 filters.append("ass=captions.ass")
-            if music:
-                music_path = work / "music.mp3"
-                music_path.write_bytes(music)
             if not filters and not music:
                 shutil.copy2(base, output)
             else:
