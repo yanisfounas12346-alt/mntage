@@ -304,7 +304,7 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
         for i in range(frames):
             progress=i/max(frames-1,1)
             absolute_seconds=(start_frame+i)/fps
-            mouth=(speech_motion.at(absolute_seconds) if speech_motion is not None
+            mouth=(speech_motion.mouth_at(absolute_seconds) if speech_motion is not None
                    else mouth_open_at(absolute_seconds,boundaries))
             arc=scene.beat_from+(scene.beat_to-scene.beat_from)*progress
             image=_draw_frame((width,height),scene.kind,progress,
