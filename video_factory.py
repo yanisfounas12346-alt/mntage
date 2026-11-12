@@ -132,94 +132,99 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         raise ValueError("Les vidéos dépassent la limite totale de 300 Mo.")
     OUT.mkdir(exist_ok=True)
     output = OUT / f"{slugify(title)}-{uuid4().hex[:8]}.mp4"
-    with tempfile.TemporaryDirectory() as tmp:
-        work = Path(tmp)
-        audio = work / "voice.mp3"
-        boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
-        duration = duration_seconds(audio)
-        count = len(video_bytes) if video_bytes else len(image_bytes)
-        durations = scene_durations(duration,boundaries,count) if video_bytes else [duration/count]*count
-        scene_count = len(durations)
-        clips = []
-        source_paths = {}
-        for idx in range(scene_count):
-            data = (video_bytes if video_bytes else image_bytes)[idx % count]
-            scene_duration = durations[idx]
-            if video_bytes:
-                source = source_paths.get(idx % count)
-                if source is None:
-                    source = work / f"source_{idx % count:03d}.mp4"
-                    if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
-                    source.write_bytes(data)
-                    inspect_source_video(source)
-                    source_paths[idx % count] = source
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            audio = work / "voice.mp3"
+            boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
+            duration = duration_seconds(audio)
+            count = len(video_bytes) if video_bytes else len(image_bytes)
+            durations = scene_durations(duration,boundaries,count) if video_bytes else [duration/count]*count
+            scene_count = len(durations)
+            clips = []
+            source_paths = {}
+            for idx in range(scene_count):
+                data = (video_bytes if video_bytes else image_bytes)[idx % count]
+                scene_duration = durations[idx]
+                if video_bytes:
+                    source = source_paths.get(idx % count)
+                    if source is None:
+                        source = work / f"source_{idx % count:03d}.mp4"
+                        if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
+                        source.write_bytes(data)
+                        inspect_source_video(source)
+                        source_paths[idx % count] = source
+                    clip = work / f"clip_{idx:03d}.mp4"
+                    # Repeat short source clips if needed, discard their original audio.
+                    _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
+                          "-t",str(scene_duration),"-an","-vf",
+                          "fps=25,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,format=yuv420p",
+                          "-c:v","libx264","-preset","veryfast","-crf","23",str(clip)])
+                    clips.append(clip)
+                    continue
+                with Image.open(BytesIO(data)) as im:
+                    im = ImageOps.exif_transpose(im).convert("RGB")
+                    im = ImageOps.fit(im, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
+                    img = work / f"image_{idx:03d}.jpg"
+                    im.save(img, quality=85)
                 clip = work / f"clip_{idx:03d}.mp4"
-                # Repeat short source clips if needed, discard their original audio.
-                _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
-                      "-t",str(scene_duration),"-an","-vf",
-                      "fps=25,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,format=yuv420p",
-                      "-c:v","libx264","-preset","veryfast","-crf","23",str(clip)])
+                frames = max(1, round(scene_duration * 25))
+                # Alternate camera movement between scenes, staying lightweight on CPU.
+                zoom = "min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))"
+                x = "iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)"
+                _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
+                      "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
+                      "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
                 clips.append(clip)
-                continue
-            with Image.open(BytesIO(data)) as im:
-                im = ImageOps.exif_transpose(im).convert("RGB")
-                im = ImageOps.fit(im, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
-                img = work / f"image_{idx:03d}.jpg"
-                im.save(img, quality=85)
-            clip = work / f"clip_{idx:03d}.mp4"
-            frames = max(1, round(scene_duration * 25))
-            # Alternate camera movement between scenes, staying lightweight on CPU.
-            zoom = "min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))"
-            x = "iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)"
-            _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
-                  "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=25,format=yuv420p",
-                  "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
-            clips.append(clip)
-        concat = work / "clips.txt"
-        # Relative paths avoid Windows drive-letter escaping in FFmpeg concat lists.
-        concat.write_text("".join(f"file '{p.name}'\n" for p in clips),encoding="utf-8")
-        base = work / "base.mp4"
-        _run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0",
-              "-i",str(concat),"-i",str(audio),"-map","0:v:0","-map","1:a:0",
-              "-t",str(duration),"-c:v","libx264","-preset","veryfast","-crf","23",
-              "-pix_fmt","yuv420p","-c:a","aac","-b:a","160k",
-              "-movflags","+faststart",str(base)])
-        filters = []
-        if captions:
-            if boundaries:
-                srt = write_timed_srt(boundaries, work / "captions.srt")
-                write_timed_ass(boundaries, work / "captions.ass")
-            else:
-                srt = write_srt(script, duration, work / "captions.srt")
-                write_ass(script, duration, work / "captions.ass")
-            # Use forward-slash relative filename from cwd to avoid Windows drive colon.
-            filters.append("ass=captions.ass")
-        if music:
-            music_path = work / "music.mp3"
-            music_path.write_bytes(music)
-        if not filters and not music:
-            shutil.copy2(base, output)
-        else:
-            cmd = ["ffmpeg","-y","-loglevel","error","-i",str(base)]
+            concat = work / "clips.txt"
+            # Relative paths avoid Windows drive-letter escaping in FFmpeg concat lists.
+            concat.write_text("".join(f"file '{p.name}'\n" for p in clips),encoding="utf-8")
+            base = work / "base.mp4"
+            _run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0",
+                  "-i",str(concat),"-i",str(audio),"-map","0:v:0","-map","1:a:0",
+                  "-t",str(duration),"-c:v","libx264","-preset","veryfast","-crf","23",
+                  "-pix_fmt","yuv420p","-c:a","aac","-b:a","160k",
+                  "-movflags","+faststart",str(base)])
+            filters = []
+            if captions:
+                if boundaries:
+                    srt = write_timed_srt(boundaries, work / "captions.srt")
+                    write_timed_ass(boundaries, work / "captions.ass")
+                else:
+                    srt = write_srt(script, duration, work / "captions.srt")
+                    write_ass(script, duration, work / "captions.ass")
+                # Use forward-slash relative filename from cwd to avoid Windows drive colon.
+                filters.append("ass=captions.ass")
             if music:
-                cmd += ["-stream_loop","-1","-i",str(music_path)]
-            if filters:
-                cmd += ["-vf",",".join(filters)]
-            if music:
-                cmd += ["-filter_complex",f"[0:a]volume=1.0[a0];[1:a]volume={max(0,min(music_volume,0.4))}[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=0[a]",
-                        "-map","0:v:0","-map","[a]"]
+                music_path = work / "music.mp3"
+                music_path.write_bytes(music)
+            if not filters and not music:
+                shutil.copy2(base, output)
             else:
-                cmd += ["-map","0:v:0","-map","0:a:0"]
-            cmd += ["-t",str(duration),"-c:v","libx264","-preset","veryfast",
-                    "-crf","22","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
-            # The subtitle filter resolves its path from the process cwd.
-            try:
-                result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True,timeout=1800)
-            except subprocess.TimeoutExpired as exc:
-                raise RuntimeError("FFmpeg (sous-titres/musique) bloqué plus de 30 minutes.") from exc
-            if result.returncode:
-                raise RuntimeError("FFmpeg (sous-titres/musique) : "+result.stderr[-1400:])
-        if captions:
-            shutil.copy2(work / "captions.srt", output.with_suffix(".srt"))
-    validate_output(output, duration)
-    return output
+                cmd = ["ffmpeg","-y","-loglevel","error","-i",str(base)]
+                if music:
+                    cmd += ["-stream_loop","-1","-i",str(music_path)]
+                if filters:
+                    cmd += ["-vf",",".join(filters)]
+                if music:
+                    cmd += ["-filter_complex",f"[0:a]volume=1.0[a0];[1:a]volume={max(0,min(music_volume,0.4))}[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=0[a]",
+                            "-map","0:v:0","-map","[a]"]
+                else:
+                    cmd += ["-map","0:v:0","-map","0:a:0"]
+                cmd += ["-t",str(duration),"-c:v","libx264","-preset","veryfast",
+                        "-crf","22","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
+                # The subtitle filter resolves its path from the process cwd.
+                try:
+                    result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True,timeout=1800)
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError("FFmpeg (sous-titres/musique) bloqué plus de 30 minutes.") from exc
+                if result.returncode:
+                    raise RuntimeError("FFmpeg (sous-titres/musique) : "+result.stderr[-1400:])
+            if captions:
+                shutil.copy2(work / "captions.srt", output.with_suffix(".srt"))
+        validate_output(output, duration)
+        return output
+    except Exception:
+        output.unlink(missing_ok=True)
+        output.with_suffix(".srt").unlink(missing_ok=True)
+        raise
