@@ -62,3 +62,50 @@ def sample_script(topic: str) -> str:
             "Mais attention : il faut distinguer ce qui est démontré de ce qui reste une hypothèse. "
             "La réalité scientifique est souvent plus étonnante que les légendes. "
             "Et toi, quelle question aimerais-tu qu'on explore ensuite ?")
+
+def cloud_scene_prompts(topic: str, count: int = 8) -> list[str]:
+    """Original scene-by-scene art direction; never invokes the paid API itself."""
+    if topic not in TOPICS: raise ValueError("Sujet Science WTF inconnu.")
+    if not 1 <= count <= 12: raise ValueError("Entre 1 et 12 scènes.")
+    subject = {
+        "abysses": [
+            "ocean surface with a tiny research submarine preparing to dive",
+            "descent into dark deep ocean, dramatic depth gradient",
+            "bioluminescent jellyfish illuminating the black water",
+            "anglerfish showing its glowing lure, scientifically recognizable",
+            "hydrothermal vent and unusual deep sea creatures",
+            "deep sea giant isopod on the ocean floor",
+            "research submarine discovering the diversity of abyssal life",
+            "dramatic final wide view of the deep sea ecosystem",
+        ],
+        "trous noirs": [
+            "astronomer looking at a star-filled sky",
+            "massive star collapsing into a black hole, educational illustration",
+            "curved spacetime grid around a dark gravitational object",
+            "black hole event horizon with bright accretion disk",
+            "light bending around a black hole, gravitational lensing",
+            "a distant star orbiting an invisible massive object",
+            "radio telescopes observing a faraway galaxy",
+            "scientific visualization of a black hole against the cosmos",
+        ],
+        "tardigrades": [
+            "moss forest seen from microscopic perspective",
+            "accurate eight-legged tardigrade walking on moss",
+            "microscope view of a tardigrade in a water droplet",
+            "tardigrade entering dormant tun state as water disappears",
+            "diagram-like visual metaphor for extreme cold survival",
+            "tardigrade reviving after rehydration",
+            "scientist examining a microscopic water sample",
+            "close-up of a tardigrade in its natural moss habitat",
+        ],
+    }[topic]
+    style = ("Vertical 9:16, premium original educational cartoon illustration, "
+             "cohesive 2D vector-like art, dark midnight blue, teal and warm yellow accents, "
+             "clean bold silhouettes, playful but scientifically grounded, "
+             "same recurring mascot: small friendly white stick-figure scientist "
+             "with round head, two black dot eyes, yellow explorer backpack, "
+             "mascot in a corner gesturing toward the main subject, "
+             "strong central composition, large clear shapes, "
+             "no text, no letters, no watermark, no logos, "
+             "keep lower 30 percent visually quiet for subtitles. ")
+    return [style + subject[i % len(subject)] for i in range(count)]
