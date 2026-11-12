@@ -19,6 +19,11 @@ OUT.mkdir(exist_ok=True)
 def slugify(value: str) -> str:
     return re.sub(r"[^a-z0-9_-]+", "-", value.lower().strip())[:60].strip("-") or "video"
 
+def validate_image_dimensions(width: int, height: int) -> None:
+    """Avoid excessive memory allocation from compressed source images."""
+    if width <= 0 or height <= 0 or width * height > 40_000_000:
+        raise ValueError("Image trop grande ou invalide : maximum 40 mégapixels.")
+
 def require_ffmpeg():
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         raise RuntimeError("FFmpeg et ffprobe doivent être installés et présents dans le PATH.")
@@ -184,8 +189,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 with warnings.catch_warnings():
                     warnings.simplefilter("error", Image.DecompressionBombWarning)
                     with Image.open(BytesIO(data)) as im:
-                        if im.width * im.height > 40_000_000:
-                            raise ValueError("Image trop grande : maximum 40 mégapixels.")
+                        validate_image_dimensions(im.width, im.height)
                         im = ImageOps.exif_transpose(im).convert("RGB")
                     im = ImageOps.fit(im, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
                     img = work / f"image_{idx:03d}.jpg"
