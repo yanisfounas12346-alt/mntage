@@ -197,19 +197,19 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
     mode=shot%4
     if kind in ("brain","neural","vision"):
         if mode in (0,2):
-            _brain(p,275,438,t,1.43 if mode==2 else 1.17,build=_ease_out(min(1,progress*1.7)))
-            _actor(p,102,700,.50,t,mouth=mouth,action="point",feeling="curious",progress=progress)
+            _brain(p,275,438,t,1.43 if mode==2 else 1.17,build=_ease_out(min(1,arc*1.7)))
+            _actor(p,102,700,.50,t,mouth=mouth,action="point",feeling="curious",progress=arc)
             if mode==2:
                 for i in range(5):
                     ang=t*1.8+i*math.tau/5
                     x=275+185*math.cos(ang);y=445+175*math.sin(ang)
                     p.ellipse((x-6,y-6,x+6,y+6),YELLOW)
         elif mode==1:
-            _actor(p,255,660,1.16,t,mouth=mouth,feeling="curious",action="point",progress=progress)
-            _brain(p,415,358,t,.48,build=_ease_out(progress*1.8))
+            _actor(p,255,660,1.16,t,mouth=mouth,feeling="curious",action="point",progress=arc)
+            _brain(p,415,358,t,.48,build=_ease_out(arc*1.8))
         else:
-            _actor(p,112,674,.75,t,mouth=mouth,feeling="curious",action="inspect",progress=progress)
-            _brain(p,394,394,t,.85,build=_ease_out(progress*2))
+            _actor(p,112,674,.75,t,mouth=mouth,feeling="curious",action="inspect",progress=arc)
+            _brain(p,394,394,t,.85,build=_ease_out(arc*2))
             for i in range(4):
                 travel=(progress*1.2+i*.25)%1
                 x=_lerp(175,299,travel)
@@ -217,61 +217,61 @@ def draw_professional_frame(base: Image.Image,kind: str,shot: int,
                 p.ellipse((x-7,y-7,x+7,y+7),CYAN)
     elif kind=="experiment":
         if mode==1:
-            _actor(p,240,673,1.06,t,mouth=mouth,action="point",progress=progress)
+            _actor(p,240,673,1.06,t,mouth=mouth,action="point",progress=arc)
             p.ellipse((378,300,468,390),outline=YELLOW,width=6)
             theta=t*2
             p.line([(423,345),(423+32*math.cos(theta),345+32*math.sin(theta))],YELLOW,5)
         else:
-            _mirror(p,354,494,211,410,t,distortion=.10*_ease(progress))
-            x=158 if mode!=0 else 18+145*_ease_out(progress*1.5)
-            _actor(p,x,665,.72,t,mouth=mouth,action="inspect",progress=progress)
+            _mirror(p,354,494,211,410,t,distortion=.10*_ease(arc))
+            x=158 if mode!=0 else 18+145*_ease_out(arc*1.5)
+            _actor(p,x,665,.72,t,mouth=mouth,action="inspect",progress=arc)
             p.ellipse((65,290,155,380),outline=YELLOW,width=5)
             theta=t*1.5
             p.line([(110,334),(110+30*math.cos(theta),334+30*math.sin(theta))],YELLOW,5)
     elif kind=="distort":
         if mode==0:
             _mirror(p,275,450,300,435,t,distortion=.2+.75*_ease(arc))
-            _actor(p,105,702,.50,t,mouth=mouth,feeling="surprised",action="recoil",progress=progress)
+            _actor(p,105,702,.50,t,mouth=mouth,feeling="surprised",action="recoil",progress=arc)
         elif mode==1:
-            _actor(p,266,653,1.27,t,mouth=mouth,feeling="surprised",action="recoil",progress=progress)
+            _actor(p,266,653,1.27,t,mouth=mouth,feeling="surprised",action="recoil",progress=arc)
             _circle(p,420,331,44+16*_pulse(t),PINK,4)
             p.line([(420,302),(420,339)],YELLOW,7)
             p.ellipse((414,347,426,359),YELLOW)
         elif mode==2:
             _mirror(p,270,448,358,450,t,distortion=.36+.6*_ease_out(arc))
-            _actor(p,80,712,.41,t,mouth=mouth,feeling="surprised",action="recoil",progress=progress)
+            _actor(p,80,712,.41,t,mouth=mouth,feeling="surprised",action="recoil",progress=arc)
         else:
             _mirror(p,145,458,202,356,t,distortion=0.)
             _mirror(p,394,458,202,356,t,distortion=.27+.70*_ease(arc))
-            _actor(p,264,710,.44,t,mouth=mouth,feeling="surprised",action="point",progress=progress)
+            _actor(p,264,710,.44,t,mouth=mouth,feeling="surprised",action="point",progress=arc)
             p.line([(270,300),(270,639)],MUTED,2)
     elif kind=="outro":
         _brain(p,270,420,t,1.0,build=1.)
-        _actor(p,128,703,.70,t,mouth=mouth,feeling="curious",action="point",progress=progress)
+        _actor(p,128,703,.70,t,mouth=mouth,feeling="curious",action="point",progress=arc)
         p.text((270,710),"SCIENCE WTF",WHITE,29)
     elif kind=="reveal":
         if mode==1:
-            _actor(p,262,670,1.25,t,mouth=mouth,action="talk",progress=progress)
+            _actor(p,262,670,1.25,t,mouth=mouth,action="talk",progress=arc)
             _circle(p,415,334,37,CYAN,4)
         else:
             _mirror(p,363,465,210,417,t,distortion=(1-_ease_out(arc))*.8,reveal=_ease_out(arc))
-            _actor(p,135,685,.79,t,mouth=mouth,action="point",progress=progress)
+            _actor(p,135,685,.79,t,mouth=mouth,action="point",progress=arc)
     else:
         if mode==1:
             # A speaking character always shares the screen with the actual
             # story object, not an unrelated decorative target circle.
             _mirror(p,413,454,164,335,t,distortion=.12*_ease_out(progress))
             _actor(p,209,650,1.09,t,mouth=mouth,action="inspect",
-                   feeling="curious",progress=progress)
+                   feeling="curious",progress=arc)
         elif mode==2:
-            _mirror(p,277,474,332,454,t,distortion=.10*_ease(progress))
-            _actor(p,94,707,.48,t,mouth=mouth,action="inspect",progress=progress)
+            _mirror(p,277,474,332,454,t,distortion=.10*_ease(arc))
+            _actor(p,94,707,.48,t,mouth=mouth,action="inspect",progress=arc)
         elif mode==3:
             _mirror(p,365,460,214,398,t,distortion=.08*_pulse(t))
-            _actor(p,156,676,.85,t,mouth=mouth,action="point",progress=progress)
+            _actor(p,156,676,.85,t,mouth=mouth,action="point",progress=arc)
         else:
-            x=-110+260*_ease_out(progress*1.7) if kind=="approach" else 153
+            x=-110+260*_ease_out(arc*1.7) if kind=="approach" else 153
             _mirror(p,377,468,213,409,t,distortion=0.)
             _actor(p,x,678,.83,t,mouth=mouth,
-                   action="walk" if kind=="approach" else "inspect",progress=progress)
+                   action="walk" if kind=="approach" else "inspect",progress=arc)
     return frame
