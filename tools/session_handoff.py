@@ -61,6 +61,17 @@ def save(s,path=None):
         os.replace(tmp,path)
     finally:
         tmp.unlink(missing_ok=True)
+    # Keep the handoff prompt continuously up to date, even if the UI
+    # conversation reaches its limit without an explicit "resume" command.
+    if path == STATE_FILE:
+        HANDOFF_FILE.parent.mkdir(parents=True, exist_ok=True)
+        prompt_tmp = HANDOFF_FILE.with_name(
+            HANDOFF_FILE.name + "." + uuid.uuid4().hex + ".tmp")
+        try:
+            prompt_tmp.write_text(make_handoff(s), encoding="utf-8")
+            os.replace(prompt_tmp, HANDOFF_FILE)
+        finally:
+            prompt_tmp.unlink(missing_ok=True)
 
 def gate_status(n):
     path=gate.OUT/f"cycle_{n:04d}.json"
