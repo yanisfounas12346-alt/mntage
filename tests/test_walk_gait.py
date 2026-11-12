@@ -2,7 +2,8 @@
 import math
 import unittest
 
-from motion_director import walk_pose, walk_pose_with_translation
+from motion_director import (walk_pose, walk_pose_with_translation, articulated_knee,
+                             THIGH_LENGTH, SHIN_LENGTH)
 from motion_studio import _background, _draw_frame
 
 
@@ -181,6 +182,62 @@ class WalkGaitTests(unittest.TestCase):
                             beat_rate=.55, **kw)
         self.assertNotEqual(slow.tobytes(), quick.tobytes())
         self.assertEqual(slow.getpixel((10, 510)), quick.getpixel((10, 510)))
+
+    def test_knees_keep_two_segment_lengths_through_full_gait(self):
+        # No shortening/elongation under normal in-place walking.
+        for sample in range(101):
+            t = sample * math.tau / (100 * SPEED)
+            legs = walk_pose(t)[2]
+            for hip, knee, foot in legs:
+                with self.subTest(t=t, hip=hip):
+                    self.assertAlmostEqual(
+                        math.dist(hip, knee), THIGH_LENGTH, places=5)
+                    self.assertAlmostEqual(
+                        math.dist(knee, foot), SHIN_LENGTH, places=5)
+
+    def test_knee_solver_is_mirror_symmetric(self):
+        # Mirroring the leg should not reverse its bend unpredictably.
+        left = articulated_knee((-9, 59), (-34, 159), -1)
+        right = articulated_knee((9, 59), (34, 159), 1)
+        self.assertAlmostEqual(left[0], -right[0], places=6)
+        self.assertAlmostEqual(left[1], right[1], places=6)
+        self.assertLess(left[0], -9)
+        self.assertGreater(right[0], 9)
+
+    def test_overreach_keeps_ankle_target_and_joint_finite(self):
+        # A fast move may go beyond physical reach: avoid NaN and popping.
+        hip = (-9, 59)
+        for x in (-185, -145, 100, 220):
+            ankle = (x, 159)
+            knee = articulated_knee(hip, ankle, -1)
+            self.assertTrue(all(math.isfinite(value) for value in knee))
+            self.assertAlmostEqual(
+                math.dist(hip, knee) / math.dist(knee, ankle),
+                THIGH_LENGTH / SHIN_LENGTH, places=5)
+        self.assertTrue(all(math.isfinite(value) for value in
+                            articulated_knee((0, 0), (0, 0), 1)))
+
+    def test_no_joint_snap_at_full_extension_boundary(self):
+        hip = (0, 0)
+        radius = THIGH_LENGTH + SHIN_LENGTH
+        previous = articulated_knee(hip, (20, math.sqrt((radius-.001)**2-400)), 1)
+        after = articulated_knee(hip, (20, math.sqrt((radius+.001)**2-400)), 1)
+        self.assertLess(math.dist(previous, after), .5)
+
+    def test_world_planted_ankle_is_unchanged_by_knee_solver(self):
+        # Solving the knee must not regress opt 4's world-space foot lock.
+        scale = .83
+        def root_x_at(t):
+            return 50 + 70*t
+        for phase in (math.pi/6, math.pi/3, 2*math.pi/3, 5*math.pi/6):
+            t = phase/SPEED
+            sway, bob, legs, _ = walk_pose_with_translation(
+                t, root_x_at, scale=scale)
+            hip, knee, foot = legs[1]  # right foot is planted
+            stage_x = root_x_at(t) + scale*(sway+foot[0])
+            self.assertAlmostEqual(stage_x, root_x_at(0)+34*scale, places=5)
+            self.assertAlmostEqual(foot[1]+bob, 159, places=5)
+            self.assertTrue(all(math.isfinite(v) for v in knee))
 
     def test_approach_actually_changes_pose_while_camera_remains_locked(self):
         bg = _background((540, 960), "approach")
