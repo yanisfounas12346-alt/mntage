@@ -5,75 +5,100 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-
+from io import BytesIO
 import edge_tts
 from PIL import Image, ImageOps
+from subtitles import write_srt
 
 OUT = Path("outputs")
 OUT.mkdir(exist_ok=True)
 
-
 def slugify(value: str) -> str:
-    return (re.sub(r"[^a-z0-9_-]+", "-", value.lower().strip())[:60].strip("-") or "video")
+    return re.sub(r"[^a-z0-9_-]+", "-", value.lower().strip())[:60].strip("-") or "video"
 
-
-def require_ffmpeg() -> None:
+def require_ffmpeg():
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
-        raise RuntimeError("Installe FFmpeg et ajoute ffmpeg/ffprobe au PATH.")
-
+        raise RuntimeError("FFmpeg et ffprobe doivent être installés et présents dans le PATH.")
 
 def duration_seconds(audio: Path) -> float:
-    result = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=noprint_wrappers=1:nokey=1", str(audio)],
-        capture_output=True, text=True, check=True,
-    )
-    return float(result.stdout.strip())
+    r = subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
+                        "-of","default=noprint_wrappers=1:nokey=1",str(audio)],
+                       capture_output=True,text=True,check=True)
+    return float(r.stdout.strip())
 
-
-async def synthesize(script: str, destination: Path, voice: str) -> None:
+async def synthesize(script: str, destination: Path, voice: str):
     await edge_tts.Communicate(script, voice=voice).save(str(destination))
 
+def _run(args):
+    result = subprocess.run(args, capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError("FFmpeg : " + result.stderr[-1400:])
 
 def make_video(title: str, script: str, image_bytes: list[bytes],
-               voice: str = "fr-FR-DeniseNeural") -> Path:
+               voice: str = "fr-FR-DeniseNeural",
+               captions: bool = True, music: bytes | None = None,
+               music_volume: float = 0.12) -> Path:
     require_ffmpeg()
-    if not script.strip():
-        raise ValueError("Le script ne peut pas être vide.")
-    if not image_bytes:
-        raise ValueError("Ajoute au moins une image.")
-    name = slugify(title)
-    output = OUT / f"{name}.mp4"
-    with tempfile.TemporaryDirectory() as temp:
-        work = Path(temp)
+    if not script.strip() or not image_bytes:
+        raise ValueError("Un script et au moins un visuel sont nécessaires.")
+    if len(image_bytes) > 24:
+        raise ValueError("Maximum 24 images pour protéger les ressources du PC.")
+    OUT.mkdir(exist_ok=True)
+    output = OUT / f"{slugify(title)}.mp4"
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
         audio = work / "voice.mp3"
         asyncio.run(synthesize(script.strip(), audio, voice))
         duration = duration_seconds(audio)
-        per_image = max(1.0, duration / len(image_bytes))
+        per_image = duration / len(image_bytes)
         clips = []
         for idx, data in enumerate(image_bytes):
-            from io import BytesIO
             with Image.open(BytesIO(data)) as im:
                 im = ImageOps.exif_transpose(im).convert("RGB")
-                im = ImageOps.fit(im, (1080, 1920), method=Image.Resampling.LANCZOS)
+                im = ImageOps.fit(im, (540, 960), method=Image.Resampling.LANCZOS)
                 img = work / f"image_{idx:03d}.jpg"
-                im.save(img, quality=90)
+                im.save(img, quality=85)
             clip = work / f"clip_{idx:03d}.mp4"
-            frames = int(per_image * 25) + 2
-            # Modest animated zoom, generated on CPU by FFmpeg.
-            subprocess.run([
-                "ffmpeg", "-y", "-loglevel", "error", "-loop", "1", "-i", str(img),
-                "-vf", f"scale=540:960,zoompan=z='min(zoom+0.0004,1.06)':d={frames}:s=540x960:fps=25,scale=1080:1920,format=yuv420p",
-                "-frames:v", str(frames), "-c:v", "libx264", "-preset", "ultrafast",
-                "-crf", "26", str(clip)
-            ], check=True)
+            frames = max(1, round(per_image * 25) + 1)
+            _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
+                  "-vf",f"zoompan=z='min(zoom+0.00035,1.06)':d={frames}:s=540x960:fps=25,format=yuv420p",
+                  "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
             clips.append(clip)
         concat = work / "clips.txt"
-        concat.write_text("".join(f"file '{p.as_posix()}'\n" for p in clips), encoding="utf-8")
-        subprocess.run([
-            "ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-            "-i", str(concat), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
-            "-t", str(duration), "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
-            "-movflags", "+faststart", str(output)
-        ], check=True)
+        # Relative paths avoid Windows drive-letter escaping in FFmpeg concat lists.
+        concat.write_text("".join(f"file '{p.name}'\n" for p in clips),encoding="utf-8")
+        base = work / "base.mp4"
+        _run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0",
+              "-i",str(concat),"-i",str(audio),"-map","0:v:0","-map","1:a:0",
+              "-t",str(duration),"-c:v","copy","-c:a","aac","-b:a","160k",
+              "-movflags","+faststart",str(base)])
+        filters = []
+        if captions:
+            srt = write_srt(script, duration, work / "captions.srt")
+            # Use forward-slash relative filename from cwd to avoid Windows drive colon.
+            filters.append("subtitles=captions.srt:force_style='FontName=Arial,FontSize=19,Outline=2,Shadow=1,MarginV=100'")
+        if music:
+            music_path = work / "music.mp3"
+            music_path.write_bytes(music)
+        if not filters and not music:
+            shutil.copy2(base, output)
+        else:
+            cmd = ["ffmpeg","-y","-loglevel","error","-i",str(base)]
+            if music:
+                cmd += ["-stream_loop","-1","-i",str(music_path)]
+            if filters:
+                cmd += ["-vf",",".join(filters)]
+            if music:
+                cmd += ["-filter_complex",f"[0:a]volume=1.0[a0];[1:a]volume={max(0,min(music_volume,0.4))}[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=0[a]",
+                        "-map","0:v:0","-map","[a]"]
+            else:
+                cmd += ["-map","0:v:0","-map","0:a:0"]
+            cmd += ["-t",str(duration),"-c:v","libx264","-preset","veryfast",
+                    "-crf","25","-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)]
+            # The subtitle filter resolves its path from the process cwd.
+            result = subprocess.run(cmd,cwd=str(work),capture_output=True,text=True)
+            if result.returncode:
+                raise RuntimeError("FFmpeg (sous-titres/musique) : "+result.stderr[-1400:])
+        if captions:
+            shutil.copy2(work / "captions.srt", OUT / f"{slugify(title)}.srt")
     return output
