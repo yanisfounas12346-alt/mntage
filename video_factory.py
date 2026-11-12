@@ -11,6 +11,7 @@ from io import BytesIO
 import edge_tts
 from PIL import Image, ImageOps
 from subtitles import write_srt, write_ass, write_timed_srt, write_timed_ass
+from motion_studio import plan_mirror_scenes, render_motion_scene, is_mirror_subject
 
 WIDTH, HEIGHT = 1080, 1920
 OUT = Path("outputs").resolve()
@@ -254,11 +255,16 @@ def _reaction_overlay(destination: Path, pose: int) -> None:
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
-               music_volume: float = 0.12, voice_rate: str = "-5%", video_bytes: list[bytes] | None = None, dynamic: bool = False) -> Path:
+               music_volume: float = 0.12, voice_rate: str = "-5%", video_bytes: list[bytes] | None = None, dynamic: bool = False,
+               motion_mode: bool = False, motion_subject: str = "") -> Path:
     require_ffmpeg()
+    if motion_mode and (video_bytes or image_bytes):
+        raise ValueError("Studio animé : ne fournis pas de visuels externes.")
+    if motion_mode and not is_mirror_subject(motion_subject, script):
+        raise ValueError("Le studio animé pilote prend en charge uniquement le sujet du miroir.")
     if any(not data for data in image_bytes) or any(not data for data in (video_bytes or [])):
         raise ValueError("Un visuel importé est vide : retire le fichier et réessaie.")
-    if not script.strip() or not (image_bytes or video_bytes):
+    if not script.strip() or not (image_bytes or video_bytes or motion_mode):
         raise ValueError("Un script et au moins un visuel sont nécessaires.")
     if len(image_bytes) > 24 or len(video_bytes or []) > 24:
         raise ValueError("Maximum 24 visuels pour protéger les ressources du PC.")
@@ -312,11 +318,22 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
             audio = work / "voice.mp3"
             boundaries = asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
             duration = duration_seconds(audio)
-            count = len(video_bytes) if video_bytes else len(image_bytes)
-            durations = scene_durations(duration,boundaries,count) if (video_bytes or dynamic) else [duration/count]*count
+            if motion_mode:
+                motion_scenes = plan_mirror_scenes(script, duration, boundaries)
+                durations = [scene.end-scene.start for scene in motion_scenes]
+                count = 0
+            else:
+                motion_scenes = []
+                count = len(video_bytes) if video_bytes else len(image_bytes)
+                durations = scene_durations(duration,boundaries,count) if (video_bytes or dynamic) else [duration/count]*count
             scene_count = len(durations)
             clips = []
             for idx in range(scene_count):
+                if motion_mode:
+                    clip = work / f"clip_{idx:03d}.mp4"
+                    render_motion_scene(clip, motion_scenes[idx])
+                    clips.append(clip)
+                    continue
                 source_index = scene_source_index(idx, scene_count, count) if dynamic else idx % count
                 data = (video_bytes if video_bytes else image_bytes)[source_index]
                 scene_duration = durations[idx]
