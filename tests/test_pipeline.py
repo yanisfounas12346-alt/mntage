@@ -9,9 +9,17 @@ from pathlib import Path
 from unittest.mock import patch
 from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download, download_videos, download_commons_scenes
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
-from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video
+from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds
 
 class VideoPlanningTests(unittest.TestCase):
+    def test_invalid_audio_duration_rejected(self):
+        for value in ("0", "nan", "inf", "-1", "not-a-number"):
+            with self.subTest(value=value):
+                with patch("video_factory.subprocess.run",
+                           return_value=SimpleNamespace(stdout=value,returncode=0)):
+                    with self.assertRaises(RuntimeError):
+                        duration_seconds(Path("voice.mp3"))
+
     def test_failed_render_removes_partial_output(self):
         async def fake_voice(script,destination,voice,rate):
             destination.write_bytes(b"audio")
