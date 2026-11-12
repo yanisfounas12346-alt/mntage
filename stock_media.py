@@ -21,7 +21,7 @@ def scene_queries(script,limit=8):
         (("yeux","oeil","œil","regard","vision"),"human eye closeup"),
         (("ville","rue","immeuble","bâtiment"),"city streets"),
         (("montagne","sommet","alpes"),"mountain landscape"),
-        (("animal","chien","chat","oiseau"),"wildlife animals"),
+        (("animal","chien","chat","oiseau","cheval"),"wildlife animals"),
         (("soleil","lumière","coucher"),"sunset sky"),
         (("pluie","orage","tempête"),"rain storm"),
         (("voiture","route","conduite"),"cars road"),
@@ -35,6 +35,10 @@ def scene_queries(script,limit=8):
         normalized=sentence.casefold()
         tokens=re.findall(r"[a-zA-ZÀ-ÿœ]+",normalized)
         matches=[]
+        # Irregular French plurals otherwise escape simple keyword matching.
+        irregular={"animaux":"animal","chevaux":"cheval","journaux":"journal",
+                   "yeux":"oeil","travaux":"travail"}
+        tokens=[irregular.get(token,token) for token in tokens]
         for words,query in topics:
             for keyword in words:
                 # Match whole words and simple plurals; avoid "mer" in "premier".
