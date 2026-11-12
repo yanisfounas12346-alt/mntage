@@ -31,15 +31,18 @@ with tab_create:
     with st.expander("⚙️ Options avancées",expanded=False):
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
-        modes=["Éco — cartes animées"]
-        if configured(): modes.append("IA locale — Stable Diffusion CPU (lent)")
+        modes=[]
         if os.environ.get("PEXELS_API_KEY"):
             modes.append("Vidéos Pexels — vrais clips (recommandé)")
+        modes.append("Éco — fonds animés abstraits (démonstration)")
+        if configured(): modes.append("IA locale — Stable Diffusion CPU (lent)")
+        if os.environ.get("PEXELS_API_KEY"):
             modes.append("Photos Pexels — recherche automatique")
         mode=st.selectbox("Visuels",modes)
         captions=st.checkbox("Sous-titres incrustés (timing estimé)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
         images=st.file_uploader("Mes images (facultatif)",type=["png","jpg","jpeg"],accept_multiple_files=True)
+        st.caption("⚠️ Le mode Éco ne produit pas de vrais sujets vidéo. Pour de véritables clips, configure PEXELS_API_KEY et choisis Vidéos Pexels.")
         st.caption("La file d'attente enregistre uniquement le script et les options de base. Musique et images personnelles : génération immédiate.")
     def visuals():
         if images:return [i.getvalue() for i in images]
