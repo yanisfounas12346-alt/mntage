@@ -17,8 +17,8 @@ Write-Host "=== mntage : verification Windows ==="
 & $python -m compileall -q app.py stock_media.py video_factory.py subtitles.py tests
 if ($LASTEXITCODE -ne 0) { throw "Echec de la compilation Python." }
 
-& ffmpeg -hide_banner -filters | Select-String -Pattern '^\s*\.\.\.\s+ass\s'
-if (-not $?) { throw "Verification du filtre ASS impossible." }
+$assFilter = & ffmpeg -hide_banner -filters 2>&1 | Select-String -Pattern '^\s*\.\.\.\s+ass\s'
+if (-not $assFilter) { throw "Filtre ASS absent : utilise une version FFmpeg avec libass." }
 
 & $python -m unittest discover -s tests -v
 if ($LASTEXITCODE -ne 0) { throw "Tests en echec. Consulte les erreurs ci-dessus." }
