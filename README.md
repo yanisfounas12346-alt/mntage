@@ -86,6 +86,10 @@ cd $HOME\mntage
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
+### Vérification sur GitHub Actions
+
+À chaque push ou pull request, le workflow `.github/workflows/python-checks.yml` prévoit deux environnements : Linux et Windows. Sur Windows, il installe les dépendances, puis lance `verify_windows.ps1`, y compris les tests FFmpeg. Consulte l'onglet **Actions** du dépôt pour voir si les vérifications ont réellement réussi ; la présence du workflow ne garantit pas leur succès.
+
 ### Vérification automatique sous Windows
 
 Après installation et mise à jour du dépôt, lance dans PowerShell :
