@@ -5,6 +5,7 @@ The local UI controller must explicitly mark completion after verifying the resu
 """
 from __future__ import annotations
 import argparse
+from contextlib import redirect_stdout
 from datetime import datetime, timezone
 import json
 import os
@@ -149,7 +150,9 @@ def checkpoint(s,pull=True,force=False):
     n=s["completed"]
     if n<1 or (n%10 and not force):
         raise ValueError("Checkpoint uniquement aux multiples de 10, sauf --force.")
-    ok=gate.checkpoint(n,pull=pull)
+    # Keep stdout machine-readable JSON for a graphical UI controller.
+    with redirect_stdout(sys.stderr):
+        ok=gate.checkpoint(n,pull=pull)
     if ok:
         s["failure"]=""
     elif not s.get("failure"):
