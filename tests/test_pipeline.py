@@ -56,6 +56,18 @@ class VideoPlanningTests(unittest.TestCase):
         self.assertAlmostEqual(sum(durations),12.0)
         self.assertTrue(all(d>0 for d in durations))
 
+    def test_commons_rejects_unrelated_titles(self):
+        hits={"query":{"pages":{
+            "1":{"pageid":1,"title":"File:Random celebration.webm","imageinfo":[
+                {"mime":"video/webm","size":2000,"url":"https://example.org/a.webm",
+                 "extmetadata":{"LicenseShortName":{"value":"CC0"}}}]},
+            "2":{"pageid":2,"title":"File:Forest trees.webm","imageinfo":[
+                {"mime":"video/webm","size":2000,"url":"https://example.org/b.webm",
+                 "extmetadata":{"LicenseShortName":{"value":"CC0"}}}]}}}}
+        with patch("stock_media.urlopen",return_value=io.BytesIO(json.dumps(hits).encode())):
+            results=search_commons_videos("forest trees",limit=6)
+        self.assertEqual([item["id"] for item in results],[2])
+
     def test_commons_license_and_ranking(self):
         hits={"query":{"pages":{
             "1":{"pageid":1,"title":"File:Random clip.webm","imageinfo":[{"mime":"video/webm","size":2000,"url":"https://example.org/a.webm","extmetadata":{"LicenseShortName":{"value":"CC BY 4.0"}}}]},
