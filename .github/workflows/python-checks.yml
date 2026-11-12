@@ -69,7 +69,8 @@ jobs:
       - name: Run checkpoint 10 of 600 on Windows
         if: github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint'
         shell: pwsh
-        run: & .\.venv\Scripts\python.exe -m tools.checkpoint --iteration 10 --no-pull
+        run: |
+          & .\.venv\Scripts\python.exe -m tools.checkpoint --iteration 10 --no-pull
       - name: Save checkpoint 10 report (Windows)
         if: always() && (github.head_ref == 'optimization-010-media-checkpoint' || github.ref_name == 'optimization-010-media-checkpoint')
         uses: actions/upload-artifact@v4
