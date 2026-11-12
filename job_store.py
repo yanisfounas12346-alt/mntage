@@ -46,7 +46,10 @@ def next_job():
         row = con.execute("SELECT * FROM jobs WHERE status='queued' ORDER BY id LIMIT 1").fetchone()
         if row:
             con.execute("UPDATE jobs SET status='running' WHERE id=? AND status='queued'",(row["id"],))
-        return dict(row) if row else None
+            claimed = dict(row)
+            claimed["status"] = "running"
+            return claimed
+        return None
 
 def finish(job_id, video=None, error=None):
     """Complete only a running render; never overwrite cancelled or retried jobs."""
