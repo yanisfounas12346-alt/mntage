@@ -7,11 +7,38 @@ from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from stock_media import scene_queries, select_video_scenes, search_commons_videos, _download, download_videos, download_commons_scenes
+from stock_media import scene_queries, select_video_scenes, search_commons_videos, search_videos, search_pixabay_videos, _download, download_videos, download_commons_scenes
 from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds
 
 class VideoPlanningTests(unittest.TestCase):
+    def test_pexels_avoids_oversized_files(self):
+        payload={"videos":[{"id":7,"video_files":[
+            {"file_type":"video/mp4","link":"https://example.org/huge.mp4",
+             "size":55*1024*1024,"width":1080,"height":1920},
+            {"file_type":"video/mp4","link":"https://example.org/small.mp4",
+             "size":20*1024*1024,"width":720,"height":1280}]}]}
+        with patch("stock_media._api",return_value=payload):
+            clips=search_videos("forest")
+        self.assertEqual(clips[0]["url"],"https://example.org/small.mp4")
+
+    def test_pixabay_avoids_oversized_files(self):
+        payload={"hits":[{"id":9,"videos":{
+            "medium":{"url":"https://example.org/huge.mp4","size":55*1024*1024},
+            "small":{"url":"https://example.org/small.mp4","size":12*1024*1024}}}]}
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch("stock_media.os.environ.get",return_value="test-key"), \
+             patch("stock_media.json.load",return_value=payload), \
+             patch("stock_media.urlopen",return_value=io.BytesIO(b"{}")):
+            import os
+            previous=os.getcwd()
+            try:
+                os.chdir(tmp)
+                clips=search_pixabay_videos("forest")
+            finally:
+                os.chdir(previous)
+        self.assertEqual(clips[0]["url"],"https://example.org/small.mp4")
+
     def test_insecure_media_redirect_rejected(self):
         response=io.BytesIO(b"video")
         response.headers={"Content-Type":"video/mp4"}
