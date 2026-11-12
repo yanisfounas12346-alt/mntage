@@ -6,6 +6,7 @@ import math
 import os
 import sqlite3
 import threading
+from contextlib import contextmanager
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,10 +33,19 @@ def estimate_eur(count: int) -> float:
 def _db_path() -> Path:
     return Path(os.environ.get("MNTAGE_CLOUD_LEDGER", "mntage_cloud_spend.sqlite3"))
 
+@contextmanager
 def _connect():
     conn = sqlite3.connect(_db_path(), timeout=30)
-    conn.execute("CREATE TABLE IF NOT EXISTS spend (id INTEGER PRIMARY KEY, month TEXT NOT NULL, eur REAL NOT NULL, status TEXT NOT NULL)")
-    return conn
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS spend (id INTEGER PRIMARY KEY, month TEXT NOT NULL, eur REAL NOT NULL, status TEXT NOT NULL)")
+        try:
+            yield conn
+            conn.commit()
+        except BaseException:
+            conn.rollback()
+            raise
+    finally:
+        conn.close()
 
 def spent_eur() -> float:
     month = datetime.now(timezone.utc).strftime("%Y-%m")
