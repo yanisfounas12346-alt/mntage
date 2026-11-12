@@ -128,6 +128,40 @@ du service. La validation artistique des vidéos nécessite encore un humain.
 Ne pas publier `outputs/automation/session_state.json` ni les journaux
 si des informations personnelles ou secrets y figurent.
 
+## Pilote local supervisé : essai de 3 requêtes
+
+Le fichier \`tools/pilot_3.py\` fournit une petite interface Windows Tkinter,
+**sans bibliothèque payante ni extension navigateur**. Elle s'appuie sur
+\`tools/session_handoff.py\` et reprend le compteur déjà enregistré.
+
+\`\`\`powershell
+cd C:\Users\taver\mntage
+git pull
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+.\.venv\Scripts\python.exe -m tools.pilot_3
+\`\`\`
+
+Dans la fenêtre : **Préparer et copier**, puis **Ouvrir ChatGPT**, coller le
+texte (Ctrl+V) et l'envoyer soi-même. Quand la réponse a réellement terminé,
+vérifier le commit sur GitHub, remplir le résumé et le SHA, puis cliquer
+**Valider le résultat**. Un résultat \`validated\` exige un commit vérifié
+sur \`origin/main\` ; un même SHA ne peut pas valider deux demandes.
+La fenêtre bloque les doublons et s'arrête après **3 optimisations
+confirmées**, même si on la ferme puis la relance.
+
+Le bouton **Copier reprise** génère le contexte à coller dans un nouveau fil.
+Si l'essai franchit un multiple de dix demandes cumulées, les tests de
+non-régression restent obligatoires. Une demande \`failed\` bloque la suite
+jusqu'au contrôle de réparation.
+
+**Important : ce pilote est volontairement supervisé**. Il ne détecte pas
+automatiquement la fin des réponses ChatGPT, n'en extrait pas le contenu et
+ne clique pas lui-même sur le bouton Envoyer. L'automatisation de l'interface
+grand public ne doit ni extraire automatiquement des réponses ni contourner
+des limites d'utilisation. Pour une boucle totalement autonome, choisir un
+moyen officiellement prévu pour l'automatisation, avec ses coûts et limites
+séparés. Les tests logiciels ne remplacent pas l'inspection des MP4.
+
 ## Option : images IA locales sans GPU cloud
 
 Le moteur [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) est **facultatif**. Le mode Éco fonctionne sans lui. Pour activer le mode IA :
