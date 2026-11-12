@@ -183,6 +183,20 @@ class VideoPlanningTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,"Clip trop grand"):
                 inspect_source_video(Path("8k.mp4"))
 
+    def test_ffprobe_music_failure_has_readable_error(self):
+        from PIL import Image
+        image=Image.new("RGB",(32,32),"red")
+        buffer=io.BytesIO()
+        image.save(buffer,format="PNG")
+        with patch("video_factory.require_ffmpeg"), \
+             patch("video_factory.validate_music_audio"), \
+             patch("video_factory.duration_seconds",
+                   side_effect=subprocess.CalledProcessError(1,["ffprobe"])), \
+             patch("video_factory.synthesize") as voice:
+            with self.assertRaisesRegex(ValueError,"Musique MP3 invalide ou illisible"):
+                make_video("test","Bonjour",[buffer.getvalue()],music=b"bad mp3")
+        voice.assert_not_called()
+
     def test_music_requires_actual_mp3_stream(self):
         from video_factory import validate_music_audio
         with patch("video_factory.subprocess.run",
