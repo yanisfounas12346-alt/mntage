@@ -8,6 +8,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from PIL import Image
@@ -66,6 +67,20 @@ def _reserve(count: int, cap_eur: float) -> tuple[int, float]:
             cur = conn.execute("INSERT INTO spend(month,eur,status) VALUES(?,?,'reserved')", (month,estimate))
             return cur.lastrowid, estimate
 
+def _provider_error(exc: urllib.error.HTTPError) -> RuntimeError:
+    # Never print provider bodies or request headers: they can contain sensitive data.
+    if exc.code in (401, 403):
+        return RuntimeError(
+            f"fal.ai refuse l'accès (HTTP {exc.code}). Vérifie que FAL_KEY contient "
+            "la clé complète, que la clé autorise les appels API, et que ton compte "
+            "a accès au modèle. Ne communique jamais ta clé."
+        )
+    if exc.code == 402:
+        return RuntimeError("fal.ai indique un problème de crédits ou de facturation (HTTP 402). Vérifie ton tableau de bord avant toute recharge.")
+    if exc.code == 429:
+        return RuntimeError("fal.ai limite temporairement les requêtes (HTTP 429). Réessaie plus tard.")
+    return RuntimeError(f"fal.ai a refusé la requête (HTTP {exc.code}). Consulte le tableau de bord fal.ai.")
+
 def generate_cloud_images(prompts: list[str], *, confirmed: bool, cap_eur: float = 15.0) -> list[bytes]:
     if not confirmed:
         raise PermissionError("Confirmation explicite nécessaire avant tout appel payant.")
@@ -79,19 +94,25 @@ def generate_cloud_images(prompts: list[str], *, confirmed: bool, cap_eur: float
         images = []
         for prompt in prompts:
             payload = json.dumps({"prompt": prompt[:1200], "image_size": {"width": WIDTH,"height": HEIGHT}, "num_images": 1, "num_inference_steps": 4, "output_format": "jpeg"}).encode()
-            req = urllib.request.Request(ENDPOINT, data=payload, headers={"Authorization": "Key " + os.environ["FAL_KEY"], "Content-Type": "application/json"}, method="POST")
+            req = urllib.request.Request(ENDPOINT, data=payload, headers={"Authorization": "Key " + os.environ["FAL_KEY"].strip(), "Content-Type": "application/json"}, method="POST")
             # Mark submitted before the first network request: failures may still be billed.
             if not submitted:
                 with _connect() as conn:
                     conn.execute("UPDATE spend SET status='submitted' WHERE id=?", (reservation,))
                 submitted = True
-            with urllib.request.urlopen(req, timeout=180) as response:
-                result = json.load(response)
+            try:
+                with urllib.request.urlopen(req, timeout=180) as response:
+                    result = json.load(response)
+            except urllib.error.HTTPError as exc:
+                raise _provider_error(exc) from None
             url = result["images"][0]["url"]
             if not url.startswith("https://") or not (url.split("/")[2].endswith(".fal.media") or url.split("/")[2] == "fal.media"):
                 raise RuntimeError("URL d'image inattendue reçue du fournisseur.")
-            with urllib.request.urlopen(url, timeout=90) as response:
-                raw = response.read(15_000_001)
+            try:
+                with urllib.request.urlopen(url, timeout=90) as response:
+                    raw = response.read(15_000_001)
+            except urllib.error.HTTPError as exc:
+                raise RuntimeError(f"Image générée mais téléchargement refusé (HTTP {exc.code}).") from None
             if len(raw) > 15_000_000:
                 raise RuntimeError("Image cloud trop volumineuse.")
             with Image.open(io.BytesIO(raw)) as image:
