@@ -66,51 +66,67 @@ Ces propositions ne sont ni des tendances TikTok vérifiées ni une garantie de 
 **Statut :** moteur expérimental en cours d'amélioration, pas encore production
 professionnelle validée sur tout un épisode et sur toutes les machines Windows.
 
-## Optimisation par lots : test obligatoire toutes les 10 demandes
+## Optimisation automatique : tests toutes les 10 requêtes et reprise entre discussions
 
-Les fichiers `tools/checkpoint.py` et `tools/next_request.py` mettent en place le
-**point de contrôle de non-régression**, sans modifier de voix, sans appeler
-d'IA payante et sans supprimer de modifications du dépôt.
+Le **suivi persistant** est dans `tools/session_handoff.py`. Il stocke son état
+dans `outputs/automation/session_state.json` (fichier local exclu de Git)
+et maintient automatiquement à jour le message de reprise
+`outputs/automation/resume_prompt.txt`.
 
-Après la réponse à la **10e demande**, lance sur ton PC :
-
-```powershell
-cd C:Users	avermntage
-..venvScriptspython.exe tools/checkpoint.py --iteration 10
-```
-
-La commande effectue un `git pull --ff-only` prudent, vérifie les
-fichiers Python, FFmpeg/ffprobe et exécute
-`python -m unittest discover -s tests -p 'test_*.py' -v`.
-
-- **PASS** : les améliorations peuvent reprendre avec la 11e demande.
-- **FAIL** : stop aux nouvelles fonctionnalités. Le fichier
-  `outputs/checkpoints/cycle_0010_next_prompt.txt` contient le diagnostic
-  à transmettre pour réparer le code ; relancer **le même** checkpoint
-  après correction, jusqu'au succès. Relire les logs pour ne pas partager
-  de clés secrètes.
-- Aux demandes 20, 30, 40, etc., remplacer `--iteration 10` par le
-  nouveau numéro. Pour vérifier sans récupérer GitHub, ajouter
-  `--no-pull` (test potentiellement obsolète).
-
-Pour un **contrôleur de clics ChatGPT** externe, une fois la réponse terminée,
-appeler :
+**Initialiser sans perdre un compteur existant** :
 
 ```powershell
-..venvScriptspython.exe -m tools.next_request --completed 10
+cd C:\Users\taver\mntage
+git pull
+.\.venv\Scripts\python.exe -m tools.session_handoff init
+.\.venv\Scripts\python.exe -m tools.session_handoff resume
 ```
 
-Cette commande retourne un objet JSON avec :
-`status` = `CONTINUE` ou `REPAIR`,
-`allow_new_optimization` et `prompt`.
-Le contrôleur ne doit **pas incrémenter le compteur des optimisations**
-lorsqu'il soumet une réparation. Le même palier de 10 est retesté.
+**Protocole du contrôleur Python de clics (à brancher séparément) :**
 
-**Important :** les tests et le choix du prochain message sont programmés.
-Le logiciel ne pilote **pas encore la souris/le navigateur**, ne sait pas
-garantir la fin d'une réponse ChatGPT et **ne répare pas automatiquement
-sans que son prompt d'erreur soit renvoyé à l'assistant**. La qualité
-artistique doit encore être validée humainement sur de vrais MP4.
+1. Appeler `.\.venv\Scripts\python.exe -m tools.session_handoff begin`. Le JSON contient
+   `status: SEND`, `request_id` et `prompt` si une nouvelle demande peut partir.
+2. Envoyer `prompt` au ChatGPT ouvert dans le navigateur, puis détecter avec
+   fiabilité que la réponse est finie. Ne pas confondre le bouton d'envoi
+   visible avec une preuve de fin de génération.
+3. **Seulement une fois le résultat vérifié**, enregistrer :
+   `.\.venv\Scripts\python.exe -m tools.session_handoff complete --request-id ID_RETOURNE --summary "Résumé de la modification" --commit SHA_DU_COMMIT --result validated`
+   (`partial` pour une réponse incomplète ; `failed` pour un échec).
+4. À la 10e, 20e, 30e... optimisation, lancer
+   `.\.venv\Scripts\python.exe -m tools.session_handoff checkpoint`. La commande
+   vérifie les sources Python, FFmpeg/ffprobe et les tests unitaires sur
+   le PC Windows. Elle fait un `git pull --ff-only` seulement si le dépôt
+   est propre ; avec `--no-pull`, les tests peuvent être obsolètes.
+5. En cas de **FAIL**, suspendre les nouvelles optimisations. Envoyer
+   l'instruction du fichier `outputs/checkpoints/cycle_0010_next_prompt.txt`
+   dans ChatGPT, faire corriger les erreurs, et relancer **le même**
+   checkpoint jusqu'au succès. Les messages de réparation ne comptent
+   pas comme de nouvelles optimisations.
+
+**Quand la discussion ChatGPT est trop longue** : ouvrir un nouveau fil, puis
+coller le texte préparé :
+
+```powershell
+.\.venv\Scripts\python.exe -m tools.session_handoff resume
+Get-Content -Raw outputs\automation\resume_prompt.txt | Set-Clipboard
+```
+
+Le fichier de reprise contient le dépôt, les contraintes du projet, le
+compteur de demandes, le dernier commit connu, les dernières modifications,
+la prochaine priorité et l'état d'un éventuel checkpoint. Si une requête
+était en cours, le programme empêche de l'envoyer deux fois : vérifier
+d'abord si son résultat a été livré.
+
+**Limites de cette version** : le suivi et les instructions de reprise
+sont programmés, mais **le navigateur n'est pas piloté par ces scripts**.
+Ils ne savent pas ouvrir automatiquement une nouvelle discussion ChatGPT
+ni récupérer automatiquement une réponse. Le contrôleur d'interface doit
+appeler `begin`, `complete` et `checkpoint` après les événements
+réellement observés. Ce dispositif n'évite pas les limites d'utilisation
+du service. La validation artistique des vidéos nécessite encore un humain.
+
+Ne pas publier `outputs/automation/session_state.json` ni les journaux
+si des informations personnelles ou secrets y figurent.
 
 ## Option : images IA locales sans GPU cloud
 
