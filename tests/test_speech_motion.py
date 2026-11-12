@@ -27,6 +27,13 @@ class SpeechMotionTests(unittest.TestCase):
         self.assertGreater(track.at(.75),.6)
         self.assertEqual(track.at(1.40),0.0)
 
+    def test_loud_speech_articulates_instead_of_holding_open_mouth(self):
+        track=SpeechMotion((1.0,)*100)
+        poses=[track.mouth_at(t) for t in (.10,.20,.30,.40,.50,.60)]
+        self.assertGreater(max(poses)-min(poses),.4)
+        quiet=SpeechMotion((0.0,)*100)
+        self.assertEqual(quiet.mouth_at(.4),0.0)
+
     def test_empty_audio_and_invalid_input(self):
         self.assertEqual(speech_motion_from_pcm(b"").at(1.0),0.0)
         with self.assertRaises(ValueError):
