@@ -664,4 +664,22 @@ class TikTokProPlanningTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             production_brief("","océan")
 
+class LocalAIPromptTests(unittest.TestCase):
+    def test_original_scenes_keep_style_and_split_sentences(self):
+        from local_ai import scene_prompts
+        prompts=scene_prompts("Une baleine nage. Un dauphin plonge.\nLes abysses sont noirs.",
+                              "documentaire cinématique")
+        self.assertEqual(len(prompts),3)
+        self.assertTrue(all("no watermark" in prompt for prompt in prompts))
+        self.assertIn("dauphin",prompts[1])
+
+    def test_scene_prompts_validate_inputs(self):
+        from local_ai import scene_prompts
+        with self.assertRaises(ValueError):
+            scene_prompts("")
+        with self.assertRaises(ValueError):
+            scene_prompts("Bonjour","inconnu")
+        with self.assertRaises(ValueError):
+            scene_prompts("Bonjour",limit=13)
+
 if __name__=="__main__":unittest.main()
