@@ -151,6 +151,18 @@ class VideoPlanningTests(unittest.TestCase):
             results=search_commons_videos("mountain landscape",limit=6)
         self.assertEqual([item["id"] for item in results],[1])
 
+    def test_commons_matches_specific_animal_titles(self):
+        hits={"query":{"pages":{
+            "1":{"pageid":1,"title":"File:Horse running.webm","imageinfo":[
+                {"mime":"video/webm","size":2000,"url":"https://example.org/horse.webm",
+                 "extmetadata":{"LicenseShortName":{"value":"CC0"}}}]},
+            "2":{"pageid":2,"title":"File:Industrial machinery.webm","imageinfo":[
+                {"mime":"video/webm","size":2000,"url":"https://example.org/machine.webm",
+                 "extmetadata":{"LicenseShortName":{"value":"CC0"}}}]}}}}
+        with patch("stock_media.urlopen",return_value=io.BytesIO(json.dumps(hits).encode())):
+            results=search_commons_videos("wildlife animals",limit=6)
+        self.assertEqual([item["id"] for item in results],[1])
+
     def test_commons_rejects_unrelated_titles(self):
         hits={"query":{"pages":{
             "1":{"pageid":1,"title":"File:Random celebration.webm","imageinfo":[
