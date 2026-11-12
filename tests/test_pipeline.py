@@ -59,6 +59,25 @@ class QueueNarrationTests(unittest.TestCase):
             self.assertEqual(job_store.next_job()["id"],second)
             self.assertIsNone(job_store.next_job())
 
+    def test_concurrent_sessions_claim_only_one_render(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(job_store,"DB",Path(tmp)/"queue.sqlite3"):
+            for index in range(4):
+                job_store.enqueue(f"Vidéo {index}","Bonjour","Éco","fr-FR-DeniseNeural",True)
+            barrier=Barrier(4)
+            def claim(_):
+                barrier.wait(timeout=10)
+                return job_store.next_job()
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                results=list(executor.map(claim,range(4)))
+            claimed=[job for job in results if job is not None]
+            self.assertEqual(len(claimed),1)
+            self.assertEqual(claimed[0]["status"],"queued")
+            self.assertEqual(sum(job["status"]=="running" for job in job_store.jobs()),1)
+
     def test_cancel_only_pending_jobs(self):
         import job_store
         with tempfile.TemporaryDirectory() as tmp, \
