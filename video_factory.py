@@ -26,8 +26,8 @@ def duration_seconds(audio: Path) -> float:
                        capture_output=True,text=True,check=True)
     return float(r.stdout.strip())
 
-async def synthesize(script: str, destination: Path, voice: str):
-    await edge_tts.Communicate(script, voice=voice).save(str(destination))
+async def synthesize(script: str, destination: Path, voice: str, rate: str = "-5%"):
+    await edge_tts.Communicate(script, voice=voice, rate=rate).save(str(destination))
 
 def _run(args):
     result = subprocess.run(args, capture_output=True, text=True)
@@ -37,7 +37,7 @@ def _run(args):
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
-               music_volume: float = 0.12) -> Path:
+               music_volume: float = 0.12, voice_rate: str = "-5%") -> Path:
     require_ffmpeg()
     if not script.strip() or not image_bytes:
         raise ValueError("Un script et au moins un visuel sont nécessaires.")
@@ -48,7 +48,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         audio = work / "voice.mp3"
-        asyncio.run(synthesize(script.strip(), audio, voice))
+        asyncio.run(synthesize(script.strip(), audio, voice, voice_rate))
         duration = duration_seconds(audio)
         per_image = duration / len(image_bytes)
         clips = []
@@ -60,8 +60,11 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 im.save(img, quality=85)
             clip = work / f"clip_{idx:03d}.mp4"
             frames = max(1, round(per_image * 25) + 1)
+            # Alternate camera movement between scenes, staying lightweight on CPU.
+            zoom = "min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))"
+            x = "iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)"
             _run(["ffmpeg","-y","-loglevel","error","-loop","1","-i",str(img),
-                  "-vf",f"zoompan=z='min(zoom+0.00035,1.06)':d={frames}:s=540x960:fps=25,format=yuv420p",
+                  "-vf",f"zoompan=z='{zoom}':x='{x}':y='ih/2-(ih/zoom/2)':d={frames}:s=540x960:fps=25,format=yuv420p",
                   "-frames:v",str(frames),"-c:v","libx264","-preset","ultrafast","-crf","27",str(clip)])
             clips.append(clip)
         concat = work / "clips.txt"
