@@ -6,7 +6,7 @@ from video_factory import make_video
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
 from job_store import enqueue, jobs, next_job, finish, update_metrics, set_youtube
-from stock_media import search_images, download_images
+from stock_media import search_images, download_images, search_videos, download_videos, scene_queries
 
 st.set_page_config(page_title="mntage | Studio vidéo",page_icon="🎬",layout="centered",initial_sidebar_state="collapsed")
 st.markdown("""
@@ -33,7 +33,9 @@ with tab_create:
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
         modes=["Éco — cartes animées"]
         if configured(): modes.append("IA locale — Stable Diffusion CPU (lent)")
-        if os.environ.get("PEXELS_API_KEY"): modes.append("Photos Pexels — recherche automatique")
+        if os.environ.get("PEXELS_API_KEY"):
+            modes.append("Vidéos Pexels — vrais clips (recommandé)")
+            modes.append("Photos Pexels — recherche automatique")
         mode=st.selectbox("Visuels",modes)
         captions=st.checkbox("Sous-titres incrustés (timing estimé)",value=True)
         music=st.file_uploader("Musique MP3 autorisée (facultatif)",type=["mp3"])
@@ -55,7 +57,17 @@ with tab_create:
         else:
             try:
                 with st.spinner("Génération de la vidéo…"):
-                    path=make_video(title,script,visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed)
+                    clips=None
+                    if mode.startswith("Vidéos"):
+                        queries=scene_queries(script,limit=5)
+                        found=[]
+                        for query in queries:
+                            matches=search_videos(query,limit=2)
+                            if matches:found.append(matches[0])
+                        if not found:raise RuntimeError("Aucun clip trouvé. Essaie le mode Éco ou reformule ton script.")
+                        clips=download_videos(found)
+                        st.caption("Sources des clips : "+", ".join(item["page"] for item in found))
+                    path=make_video(title,script,[] if clips else visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed,video_bytes=clips)
                 st.session_state["last_video"]=str(path)
                 st.success("Vidéo prête. Vérifie les images et les droits avant publication.")
             except Exception as exc:st.error(f"Erreur : {exc}")
@@ -79,7 +91,16 @@ with tab_queue:
         else:
             try:
                 with st.spinner(f"Génération : {job['title']}"):
-                    if job["mode"].startswith("IA locale"):
+                    clips=None
+                    if job["mode"].startswith("Vidéos"):
+                        found=[]
+                        for query in scene_queries(job["script"],limit=5):
+                            matches=search_videos(query,limit=2)
+                            if matches:found.append(matches[0])
+                        if not found:raise RuntimeError("Aucun clip trouvé.")
+                        clips=download_videos(found)
+                        pics=[]
+                    elif job["mode"].startswith("IA locale"):
                         if not configured():raise RuntimeError("Le moteur IA local n'est pas configuré.")
                         sentences=[s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+",job["script"]) if s.strip()]
                         pics=generate_images(["cinematic editorial illustration, no text, portrait, "+s[:250] for s in sentences[:6]],backend="cpu",steps=12)
@@ -87,7 +108,7 @@ with tab_queue:
                         pics=download_images(search_images(job["title"],limit=4))
                         if not pics:raise RuntimeError("Aucune photo trouvée.")
                     else:pics=script_to_images(job["script"],job["title"])
-                    path=make_video(job["title"],job["script"],pics,job["voice"],captions=bool(job["captions"]))
+                    path=make_video(job["title"],job["script"],pics,job["voice"],captions=bool(job["captions"]),video_bytes=clips)
                     finish(job["id"],video=path)
                 st.success(f"Vidéo #{job['id']} créée.")
             except Exception as exc:
