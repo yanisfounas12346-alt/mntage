@@ -185,9 +185,13 @@ def search_commons_videos(query, limit=6):
                       "page":info.get("descriptionurl",""),
                       "credit":meta.get("Artist",{}).get("value",""),
                       "license":license_name,"title":page.get("title","")})
-    terms=[w for w in query.lower().split() if len(w)>2]
-    found.sort(key=lambda item: (-sum(w in item["title"].lower() for w in terms),
-                                  info_size_score(item["title"]),item["title"]))
+    terms=[w for w in re.findall(r"[a-z0-9]+",query.casefold()) if len(w)>2]
+    def score(item):
+        title_tokens=set(re.findall(r"[a-z0-9]+",item["title"].casefold()))
+        return sum(1 for term in terms if term in title_tokens or term+"s" in title_tokens)
+    # Avoid accepting a random licensed clip just because it appeared in search.
+    found=[item for item in found if score(item)>0] if terms else found
+    found.sort(key=lambda item:(-score(item),info_size_score(item["title"]),item["title"]))
     return found[:limit]
 
 def info_size_score(title):
