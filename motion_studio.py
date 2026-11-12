@@ -31,6 +31,8 @@ class MotionScene:
     start: float
     end: float
     shot: int = 0
+    beat_from: float = 0.0
+    beat_to: float = 1.0
 
 
 # Stage boundaries are located in the actual script, rather than fixed time slots.
@@ -97,7 +99,7 @@ def plan_mirror_scenes(script: str, duration: float, boundaries: list[dict] | No
         for part in range(shot_count):
             a = beat.start + (beat.end - beat.start) * part / shot_count
             b = beat.start + (beat.end - beat.start) * (part + 1) / shot_count
-            shots.append(MotionScene(beat.kind, a, b, len(shots) % 4))
+            shots.append(MotionScene(beat.kind, a, b, len(shots) % 4, part/shot_count, (part+1)/shot_count))
     return shots
 
 
@@ -265,10 +267,10 @@ def _brain(p, cx=270, cy=370, t=0.0, scale=1.0):
     p.line([(cx,cy-110*scale),(cx,cy+114*scale)], (7,24,38), 8*scale)
 
 
-def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0):
+def _draw_frame(size, kind, progress, seconds, base, shot=0, mouth=0.0, beat_progress=None):
     """Draw an original scene composed of background, actions and optical effect."""
     from motion_director import draw_professional_frame
-    return draw_professional_frame(base, kind, shot, progress, seconds, mouth)
+    return draw_professional_frame(base, kind, shot, progress, seconds, mouth, beat_progress=beat_progress)
 
 
 def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
@@ -290,8 +292,9 @@ def render_motion_scene(destination: Path, scene: MotionScene, *, fps: int = 25,
             progress=i/max(frames-1,1)
             absolute_seconds=scene.start + i/fps
             mouth=mouth_open_at(absolute_seconds,boundaries)
+            arc=scene.beat_from+(scene.beat_to-scene.beat_from)*progress
             image=_draw_frame((width,height),scene.kind,progress,
-                              scene.end-scene.start,base,shot=scene.shot,mouth=mouth)
+                              scene.end-scene.start,base,shot=scene.shot,mouth=mouth,beat_progress=arc)
             proc.stdin.write(image.tobytes())
         proc.stdin.close()
         assert proc.stderr is not None
@@ -315,8 +318,8 @@ def render_mirror_preview(destination: Path, seconds: float = 8.0) -> Path:
     if seconds <= 0 or seconds > 15:
         raise ValueError("L'aperçu doit durer entre 0 et 15 secondes.")
     shots = [MotionScene("stare",0.0,seconds*.34,1),
-             MotionScene("distort",seconds*.34,seconds*.67,2),
-             MotionScene("distort",seconds*.67,seconds,3)]
+             MotionScene("distort",seconds*.34,seconds*.67,2,0.0,0.5),
+             MotionScene("distort",seconds*.67,seconds,3,0.5,1.0)]
     with tempfile.TemporaryDirectory() as folder:
         files=[]
         for i,shot in enumerate(shots):
