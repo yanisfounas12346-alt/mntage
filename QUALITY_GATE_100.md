@@ -10,7 +10,8 @@ et #4/600 proposée sur une branche dépendant de #3 ;
 #7/600 en revue (CI Linux/Windows réussie),
 #8/600 en revue (CI Linux/Windows réussie),
 #9/600 en revue (CI Linux/Windows réussie),
-#10/600 proposée sur une branche dépendant de #9 (checkpoint technique) ;
+#10/600 en revue (checkpoints CI Linux/Windows réussis),
+#11/600 proposée sur une branche dépendant de #10 (sécurisation des preuves) ;
 **contrôle visuel Windows des vidéos à effectuer** : statuts partiels.
 Le compteur persistant du PC reste indépendant et ne s'incrémente qu'après
 confirmation via `tools/session_handoff.py`. Les anciens échanges ne sont pas
@@ -41,7 +42,8 @@ reconstitués artificiellement.
 | 7 | 2026-11-12 | Chaussures trop rigides et horizontales pendant la phase aérienne du pas | `2a7b67b`, `a651a2c` (branche `optimization-007-ankle-foot-roll`, dépend de #6) | 152 tests passés sur Linux et Windows ; **validation visuelle à confirmer** | Partielle |
 | 8 | 2026-11-12 | Balancement des bras raide avec longueur variable des segments | `1549cbb`, `b876e4e` (branche `optimization-008-articulated-arm-swing`, dépend de #7) | 159 tests réussis sur Linux et Windows ; **validation visuelle locale à confirmer** | Partielle |
 | 9 | 2026-11-12 | Buste et épaules trop figés pendant le transfert du poids dans la marche | `a0a829f`, `98cf011` (branche `optimization-009-torso-weight-transfer`, dépend de #8) | 166 tests réussis Linux/Windows ; **vidéo sur PC Windows à confirmer** | Partielle |
-| 10 | 2026-11-12 | Checkpoint décennal capable de PASS si FFmpeg existe mais n'est pas exécutable ou si son filtre ASS manque | `c2a9cc3`, `f7b4c17`, `5b885d3`, `b80ba7f`, `40eda3c` (branche `optimization-010-media-checkpoint`, dépend de #9) | Vérifie l'exécution réelle de FFmpeg/ffprobe, contrôle le filtre ASS, exécute le checkpoint 10 en CI Linux/Windows et publie les rapports en artefacts ; **CI et checkpoint PC Windows encore à confirmer** | Partielle |
+| 10 | 2026-11-12 | Checkpoint décennal capable de PASS si FFmpeg existe mais n'est pas exécutable ou si son filtre ASS manque | `c2a9cc3`, `f7b4c17`, `5b885d3`, `b80ba7f`, `40eda3c`, `1d67b71` (branche `optimization-010-media-checkpoint`, dépend de #9) | 171 tests et checkpoint PASS en CI sur Linux et Windows ; **contrôle sur le PC personnel encore à confirmer** | Partielle |
+| 11 | 2026-11-12 | Reprise autorisée par un faux ou ancien rapport `cycle_0010.json` portant seulement la mention PASS | `b1dfa8f`, `a67ad01`, `cf70e45`, `15a203a` (branche `optimization-011-checkpoint-evidence`, dépend de #10) | Lie le rapport au commit Git, au dépôt local, aux étapes réussies et à la confirmation du numéro 10 dans l'historique ; tests ciblés ; **CI, checkpoint du PC cible et revue à confirmer** | Partielle |
 
 ## Audit intermédiaire — numéro 10/600 (provisoire)
 
@@ -49,6 +51,7 @@ reconstitués artificiellement.
 - **Intégration :** #1 et #2 sont sur `main` ; #3, #4, #6, #7, #8, #9 et #10 restent dans des pull requests empilées. Ne pas confondre CI validée et fonctionnalité fusionnée.
 - **Validation technique :** le workflow de la branche #10 exécute un véritable `tools.checkpoint --iteration 10 --no-pull` avec compilation des sources, FFmpeg/ffprobe, filtre ASS et tous les tests sur Linux **et** Windows. Chaque runner produit `cycle_0010.json` et `cycle_0010_next_prompt.txt` dans ses artefacts GitHub.
 - **Validation locale :** l'audit CI n'incrémente pas `session_state.json` sur le PC de l'utilisateur, ne remplace pas l'exécution du checkpoint sur cette machine et ne justifie pas le passage à 11 si le compteur local ou l'historique manque.
+- **Protection #11 en revue :** un fichier JSON réduit à `PASS`, un rapport ancien, un autre checkout Git ou une exécution ne comportant pas les étapes obligatoires ne peuvent plus débloquer la reprise. Les changements en PR ne signifient pas que le contrôle local a été effectué.
 - **Qualité artistique :** aucun épisode complet validé visuellement sur le PC cible ; pas de démonstration de généralisation à trois sujets, de qualité commerciale ni de rentabilité. Continuer uniquement après avoir documenté ces limites.
 
 ## État de référence au démarrage (à vérifier, pas un score de performance)
