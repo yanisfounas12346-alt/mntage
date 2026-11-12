@@ -30,6 +30,7 @@ with tab_create:
     st.caption(f"{len(script.split())} mots · environ {round(len(script.split())/2.5)} secondes")
     with st.expander("⚙️ Options avancées",expanded=False):
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
+        voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
         modes=["Éco — cartes animées"]
         if configured(): modes.append("IA locale — Stable Diffusion CPU (lent)")
         if os.environ.get("PEXELS_API_KEY"): modes.append("Photos Pexels — recherche automatique")
@@ -54,7 +55,7 @@ with tab_create:
         else:
             try:
                 with st.spinner("Génération de la vidéo…"):
-                    path=make_video(title,script,visuals(),voice,captions=captions,music=music.getvalue() if music else None)
+                    path=make_video(title,script,visuals(),voice,captions=captions,music=music.getvalue() if music else None,voice_rate=voice_speed)
                 st.session_state["last_video"]=str(path)
                 st.success("Vidéo prête. Vérifie les images et les droits avant publication.")
             except Exception as exc:st.error(f"Erreur : {exc}")
