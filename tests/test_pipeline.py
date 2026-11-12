@@ -12,6 +12,14 @@ from subtitles import write_srt, write_ass, timed_groups, write_timed_srt
 from video_factory import scene_durations, validate_output, inspect_source_video, _run, make_video, duration_seconds
 
 class VideoPlanningTests(unittest.TestCase):
+    def test_insecure_media_redirect_rejected(self):
+        response=io.BytesIO(b"video")
+        response.headers={"Content-Type":"video/mp4"}
+        response.geturl=lambda: "http://example.org/clip.mp4"
+        with patch("stock_media.urlopen",return_value=response):
+            with self.assertRaisesRegex(RuntimeError,"Redirection"):
+                _download("https://example.org/clip.mp4",1024)
+
     def test_invalid_audio_duration_rejected(self):
         for value in ("0", "nan", "inf", "-1", "not-a-number"):
             with self.subTest(value=value):
