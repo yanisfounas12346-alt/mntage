@@ -26,6 +26,17 @@ class SpeechMotion:
         blend = index - i
         return self.values[i] * (1 - blend) + self.values[i + 1] * blend
 
+    def mouth_at(self, seconds: float) -> float:
+        """Syllable-like mouth motion gated by existing speech volume.
+
+        This is deliberately approximate, not phoneme recognition.
+        """
+        level = self.at(seconds)
+        if level < 0.06:
+            return 0.0
+        cadence = 0.16 + 0.84 * abs(math.sin(seconds*13.7 + 0.45*math.sin(seconds*3.1)))
+        return level * cadence
+
 
 def speech_motion_from_pcm(pcm: bytes, sample_rate: int = 8000,
                            step_seconds: float = 0.02) -> SpeechMotion:
