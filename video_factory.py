@@ -91,6 +91,28 @@ def validate_output(path: Path, expected_duration: float) -> None:
     if abs(actual-expected_duration)>1.0:
         raise RuntimeError(f"Durée incorrecte : {actual:.1f}s au lieu de {expected_duration:.1f}s.")
 
+def inspect_source_video(path: Path) -> dict:
+    """Probe a source before expensive encoding; reject broken or tiny videos."""
+    import json
+    result=subprocess.run(
+        ["ffprobe","-v","error","-select_streams","v:0",
+         "-show_entries","stream=width,height,duration:format=duration",
+         "-of","json",str(path)],capture_output=True,text=True)
+    if result.returncode:
+        raise RuntimeError("Clip source illisible : "+result.stderr[-300:])
+    try:
+        data=json.loads(result.stdout)
+        video=data.get("streams",[])[0]
+        width,height=int(video["width"]),int(video["height"])
+        duration=float(video.get("duration") or data.get("format",{}).get("duration") or 0)
+    except (ValueError,TypeError,KeyError,IndexError) as exc:
+        raise RuntimeError("Métadonnées vidéo source invalides.") from exc
+    if width<480 or height<480:
+        raise RuntimeError(f"Clip trop petit ({width}x{height}) : minimum 480 px par dimension.")
+    if duration<0.5:
+        raise RuntimeError("Clip source trop court ou sans durée détectable.")
+    return {"width":width,"height":height,"duration":duration}
+
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
@@ -123,6 +145,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                     source = work / f"source_{idx % count:03d}.mp4"
                     if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
                     source.write_bytes(data)
+                    inspect_source_video(source)
                     source_paths[idx % count] = source
                 clip = work / f"clip_{idx:03d}.mp4"
                 # Repeat short source clips if needed, discard their original audio.
@@ -138,7 +161,7 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
                 img = work / f"image_{idx:03d}.jpg"
                 im.save(img, quality=85)
             clip = work / f"clip_{idx:03d}.mp4"
-            frames = max(1, round(scene_duration * 25) + 1)
+            frames = max(1, round(scene_duration * 25))
             # Alternate camera movement between scenes, staying lightweight on CPU.
             zoom = "min(zoom+0.00055,1.12)" if idx % 2 == 0 else "if(eq(on,0),1.12,max(zoom-0.00055,1.0))"
             x = "iw/2-(iw/zoom/2)" if idx % 3 else "min(iw-iw/zoom,on*0.12)"
