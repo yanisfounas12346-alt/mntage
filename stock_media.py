@@ -111,11 +111,11 @@ def search_commons_videos(query, limit=6):
     """Find freely licensed video files on Wikimedia Commons without API keys."""
     params={"action":"query","generator":"search","gsrsearch":"filetype:video "+query[:90],
             "gsrnamespace":6,"gsrlimit":max(5,min(limit*3,30)),
-            "prop":"imageinfo","iiprop":"url|size|mime|extmetadata","format":"json"}
+            "prop":"imageinfo","iiprop":"url|size|mime|extmetadata","iiextmetadatafilter":"LicenseShortName|LicenseUrl|Artist|Credit","format":"json"}
     url="https://commons.wikimedia.org/w/api.php?"+urlencode(params)
     with urlopen(Request(url,headers={"User-Agent":"mntage/1.0 (educational video creator; contact via GitHub)"}),timeout=25) as response:
         data=json.load(response)
-    allowed={"cc0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0"}
+    allowed={"cc0","cc0 1.0","pd","public domain","cc-by-4.0","cc-by-3.0","cc-by-2.0","cc by 4.0","cc by 3.0","cc by 2.0"}
     found=[]
     for page in data.get("query",{}).get("pages",{}).values():
         info=(page.get("imageinfo") or [{}])[0]
@@ -130,6 +130,7 @@ def search_commons_videos(query, limit=6):
                       "page":info.get("descriptionurl",""),"credit":meta.get("Artist",{}).get("value",""),
                       "license":license_name,"title":page.get("title","")})
         if len(found)>=limit:break
+    found.sort(key=lambda item: (-sum(w in item["title"].lower() for w in query.lower().split()), item["title"]))
     return found
 
 def select_commons_scenes(script,limit=8):
