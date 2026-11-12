@@ -4,6 +4,7 @@ from html import unescape
 from pathlib import Path
 import streamlit as st
 from video_factory import make_video
+from tiktok_pro import audit_script, production_brief, MONTHLY_BUDGET_EUR
 from auto_visuals import script_to_images
 from local_ai import configured, generate_images
 from job_store import enqueue, jobs, next_job, finish, retry_failed, recover_interrupted, cancel_queued, update_metrics, set_youtube
@@ -29,6 +30,23 @@ with tab_create:
     title=st.text_input("Titre","Mon premier Short")
     script=st.text_area("Script",height=230,placeholder="Colle ton script…")
     st.caption(f"{len(script.split())} mots · environ {round(len(script.split())/2.5)} secondes")
+    with st.expander("🚀 TikTok Pro — SEO et monétisation",expanded=True):
+        st.caption("Planification gratuite et locale. Aucun service IA payant n'est appelé.")
+        seo_keyword=st.text_input("Mot-clé principal",value=title,key="seo_keyword")
+        visual_style=st.selectbox("Style visuel cible",[
+            "documentaire cinématique","réaliste","animation 3D","illustration scientifique",
+            "fantastique"],key="seo_style")
+        audit=audit_script(script,seo_keyword)
+        st.metric("Durée estimée de narration",f"{audit['estimated_seconds']} s")
+        st.caption(f"Objectif indicatif : 65 à 90 s (environ {audit['target_words'][0]} à {audit['target_words'][1]} mots).")
+        if script.strip() and not audit["duration_ok"]:
+            st.warning("Le script est hors de la durée cible. La durée réelle dépendra de la voix.")
+        if script.strip() and not audit["keyword_in_script"]:
+            st.info("Le mot-clé principal n'apparaît pas encore dans le script.")
+        st.info(f"Budget maximal prévu : {MONTHLY_BUDGET_EUR:.0f} €/mois. Aucun achat automatique.")
+        st.download_button("📋 Télécharger le brief SEO",
+            production_brief(title,seo_keyword,visual_style),
+            file_name="brief-tiktok-pro.txt",mime="text/plain")
     with st.expander("⚙️ Options avancées",expanded=False):
         voice=st.selectbox("Voix française",["fr-FR-DeniseNeural","fr-FR-HenriNeural"])
         voice_speed=st.select_slider("Débit de narration",options=["-15%","-10%","-5%","+0%","+5%","+10%"],value="-5%",help="Un débit légèrement plus lent peut rendre la narration plus posée.")
