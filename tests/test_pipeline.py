@@ -21,6 +21,20 @@ class QueueNarrationTests(unittest.TestCase):
             self.assertEqual(job["id"],job_id)
             self.assertEqual(job["voice_rate"],"+10%")
 
+    def test_failed_job_can_be_retried_without_losing_voice_rate(self):
+        import job_store
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(job_store,"DB",Path(tmp)/"queue.sqlite3"):
+            job_id=job_store.enqueue("Titre","Bonjour","Éco","fr-FR-DeniseNeural",True,"+5%")
+            self.assertFalse(job_store.retry_failed(job_id))
+            job_store.next_job()
+            job_store.finish(job_id,error="Erreur temporaire")
+            self.assertTrue(job_store.retry_failed(job_id))
+            self.assertFalse(job_store.retry_failed(job_id))
+            job=job_store.next_job()
+            self.assertEqual(job["voice_rate"],"+5%")
+            self.assertIsNone(job["error"])
+
     def test_existing_database_gets_voice_rate_default(self):
         import sqlite3
         import job_store
