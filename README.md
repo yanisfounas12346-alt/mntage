@@ -85,3 +85,15 @@ cd $HOME\mntage
 .\.venv\Scripts\python.exe -m compileall -q .
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
+
+### Vérification automatique sous Windows
+
+Après installation et mise à jour du dépôt, lance dans PowerShell :
+
+```powershell
+.\verify_windows.ps1
+```
+
+Le script vérifie Python, FFmpeg, le filtre ASS, compile les modules et lance les tests hors ligne. Si l'exécution des scripts PowerShell est bloquée, utilise `powershell -ExecutionPolicy Bypass -File .\verify_windows.ps1`. Un résultat vert confirme uniquement les tests exécutés ; il ne remplace pas une génération réelle avec Edge TTS et une recherche Wikimedia Commons connectée à Internet.
+
+**Clips personnels :** tout MP4 ajouté dans « Options avancées » prend la priorité sur la recherche de vidéos automatique. Retire les fichiers importés pour revenir au mode Wikimedia Commons.
