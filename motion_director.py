@@ -69,13 +69,25 @@ def _actor(p,x,y,s,t,*,mouth=0.,feeling="curious",action="talk",mirror=False,pro
         wobble=math.sin(t*4)*(9 if talk>.1 else 3)
         left=[(-6,-20),(-45,-16),(-64,9+wobble)]
         right=[(6,-20),(40,-16),(56,-17-wobble-talk*14)]
+    # Gestures unfold gradually in the shot, instead of teleporting into a pose.
+    if action in ("point", "inspect", "recoil"):
+        blend=_ease_out(min(1.0,max(0.0,(progress-.08)/.38)))
+        if action == "recoil":
+            blend=_ease_out(min(1.0,max(0.0,(progress-.03)/.25)))
+        rest_left=[(-6,-20),(-45,-16),(-64,9)]
+        rest_right=[(6,-20),(40,-16),(56,-17)]
+        def interpolated(rest,target):
+            return [(_lerp(a,x,blend),_lerp(b,y,blend))
+                    for (a,b),(x,y) in zip(rest,target)]
+        left=interpolated(rest_left,left)
+        right=interpolated(rest_right,right)
     for arm in (left,right):
         stroke(arm,INK,18)
         stroke(arm,WHITE,11)
         hx,hy=arm[-1]
         ellipse(hx-7,hy-7,hx+7,hy+7,WHITE,outline=INK,width=2)
     head_x=-3*shock*math.sin(t*3.1)
-    head_y=-107-6*shock+2*math.sin(t*2.1)
+    head_y=-107-6*shock+2*math.sin(t*2.1)-1.8*talk*math.sin(t*8.5)
     ellipse(head_x-52,head_y-57,head_x+52,head_y+48,WHITE,outline=INK,width=5)
     brows=-12 if shock else -4 if feeling=="curious" else 1
     for side in (-1,1):
@@ -174,11 +186,12 @@ def _stage(p,kind,shot,progress,t):
         p.ellipse((cx-r,238-r,cx+r,238+r),outline=(36,87,96),width=2)
 
 def draw_professional_frame(base: Image.Image,kind: str,shot: int,
-                            progress: float,seconds: float,mouth: float,beat_progress=None)->Image.Image:
+                            progress: float,seconds: float,mouth: float,beat_progress=None,
+                            absolute_seconds=None)->Image.Image:
     """Storyboard-aware animated frame with a stable camera and independent layers."""
     frame=base.copy()
     p=_Painter(frame)
-    t=progress*seconds
+    t=progress*seconds if absolute_seconds is None else absolute_seconds
     arc=progress if beat_progress is None else beat_progress
     _stage(p,kind,shot,progress,t)
     mode=shot%4
