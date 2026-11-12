@@ -108,7 +108,7 @@ def begin(s):
                     "allow_send":False,"iteration":n,"prompt":detail}
     ident=uuid.uuid4().hex
     prompt=(
-        f"OPTIMISATION MNTAGE {n+1}/{s['goal']} : améliorer un défaut prioritaire "
+        f"OPTIMISATION MNTAGE {n+1}/{s['goal']} — dépôt https://github.com/yanisfounas12346-alt/mntage : améliorer un défaut prioritaire "
         "dans le dépôt GitHub, avec preuve et test ciblé. Donner le commit, "
         "les résultats et les limites. Ne pas modifier les voix ni valider TikTok. "
         "Aucun appel IA payant sans accord.\n"
