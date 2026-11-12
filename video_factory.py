@@ -43,6 +43,26 @@ def _run(args):
     if result.returncode:
         raise RuntimeError("FFmpeg : " + result.stderr[-1400:])
 
+def scene_durations(duration: float, boundaries: list[dict], clip_count: int) -> list[float]:
+    """Choose cuts near spoken-word boundaries instead of equal-duration cuts."""
+    if duration <= 0 or clip_count < 1:
+        raise ValueError("Durée ou nombre de clips invalide.")
+    target_count = min(24, max(clip_count, round(duration / 4.0)))
+    if target_count == 1 or not boundaries:
+        return [duration / target_count] * target_count
+    ends = sorted({min(duration, max(0.0, (w["offset"] + w["duration"]) / 10000000))
+                   for w in boundaries})
+    cuts=[0.0]
+    for i in range(1,target_count):
+        ideal=duration*i/target_count
+        candidates=[t for t in ends if t-cuts[-1]>=1.5 and
+                    duration-t>=1.5*(target_count-i)]
+        if not candidates:
+            return [duration / target_count] * target_count
+        cuts.append(min(candidates,key=lambda t:abs(t-ideal)))
+    cuts.append(duration)
+    return [b-a for a,b in zip(cuts,cuts[1:])]
+
 def make_video(title: str, script: str, image_bytes: list[bytes],
                voice: str = "fr-FR-DeniseNeural",
                captions: bool = True, music: bytes | None = None,
@@ -61,15 +81,20 @@ def make_video(title: str, script: str, image_bytes: list[bytes],
         duration = duration_seconds(audio)
         count = len(video_bytes) if video_bytes else len(image_bytes)
         per_image = duration / count
-        scene_count = max(count, round(duration / 4.0)) if video_bytes else count
+        durations = scene_durations(duration,boundaries,count) if video_bytes else [duration/count]*count
+        scene_count = len(durations)
         clips = []
+        source_paths = {}
         for idx in range(scene_count):
             data = (video_bytes if video_bytes else image_bytes)[idx % count]
-            scene_duration = duration / scene_count
+            scene_duration = durations[idx]
             if video_bytes:
-                source = work / f"source_{idx:03d}.mp4"
-                if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
-                source.write_bytes(data)
+                source = source_paths.get(idx % count)
+                if source is None:
+                    source = work / f"source_{idx % count:03d}.mp4"
+                    if len(data)>100*1024*1024:raise ValueError("Chaque clip MP4 doit faire moins de 100 Mo.")
+                    source.write_bytes(data)
+                    source_paths[idx % count] = source
                 clip = work / f"clip_{idx:03d}.mp4"
                 # Repeat short source clips if needed, discard their original audio.
                 _run(["ffmpeg","-y","-loglevel","error","-stream_loop","-1","-i",str(source),
